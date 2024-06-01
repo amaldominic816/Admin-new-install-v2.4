@@ -31,6 +31,9 @@
                             <li class="nav-item">
                                 <a class="nav-link" href="{{route('admin.users.delivery-man.preview', ['id'=>$dm->id, 'tab'=> 'conversation'])}}"  aria-disabled="true">{{translate('messages.conversations')}}</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{route('admin.users.delivery-man.preview', ['id'=>$dm->id, 'tab'=> 'disbursement'])}}"  aria-disabled="true">{{translate('messages.disbursements')}}</a>
+                            </li>
                         </ul>
                         <!-- End Nav -->
                     </div>
@@ -54,9 +57,9 @@
         </div>
         <!-- End Page Header -->
         @if($dm->application_status == 'approved')
-        <div class="row mb-3 row-3">
+        <div class="row  mb-3 row-3">
             <!-- Earnings (Monthly) Card Example -->
-            <div class="col-sm-6 col-md-4">
+            <div class="col-sm-6 mb-2 col-md-4">
                 <div class="resturant-card card--bg-1">
                     <h2 class="title">
                         {{$dm->total_delivered_orders()->count()}}
@@ -69,32 +72,112 @@
             </div>
 
             <!-- Collected Cash Card Example -->
-            <div class="col-sm-6 col-md-4">
-                <div class="resturant-card card--bg-2">
+            <div class="col-sm-6 mb-2 col-md-4">
+                <div class="resturant-card bg--3">
                     <h2 class="title">
                         {{\App\CentralLogics\Helpers::format_currency($dm->wallet?$dm->wallet->collected_cash:0.0)}}
                     </h2>
                     <h5 class="subtitle">
                         {{translate('messages.cash_in_hand')}}
                     </h5>
-                    <img class="resturant-icon w--30" src="{{asset('public/assets/admin/img/withdraw-amount.png')}}" alt="img">
+                    <img class="resturant-icon" src="{{asset('/public/assets/admin/img/transactions/withdraw-amount.png')}}" alt="transactions">
                 </div>
             </div>
 
             <!-- Total Earning Card Example -->
-            <div class="col-sm-6 col-md-4">
-                <div class="resturant-card card--bg-3">
+            <div class="col-sm-6 mb-2 col-md-4">
+                <div class="resturant-card bg--1">
                     <h2 class="title">
                         {{\App\CentralLogics\Helpers::format_currency($dm->wallet?$dm->wallet->total_earning:0.00)}}
                     </h2>
                     <h5 class="subtitle">
                         {{translate('messages.total_earning')}}
                     </h5>
-                    <img class="resturant-icon w--30" src="{{asset('public/assets/admin/img/pending.png')}}" alt="img">
+                    <img class="resturant-icon" src="{{asset('/public/assets/admin/img/transactions/pending.png')}}" alt="transactions">
                 </div>
             </div>
 
+            <!-- Total Earning Card Example -->
+
+                <?php
+                $balance = 0;
+                if($dm->wallet){
+                    $balance = $dm->wallet->total_earning - ($dm->wallet->total_withdrawn + $dm->wallet->pending_withdraw + $dm->wallet->collected_cash );
+                }
+
+                ?>
+            @if($dm->earning)
+
+                @if ($balance > 0)
+                    <div class="col-sm-6 mb-2 col-md-4">
+                        <div class="resturant-card bg--1">
+                            <h2 class="title">
+                                {{\App\CentralLogics\Helpers::format_currency(abs($balance))}}
+                            </h2>
+                            <h5 class="subtitle">
+                                {{translate('messages.Withdraw_Able_Balance')}}
+                            </h5>
+                            <img class="resturant-icon" src="{{asset('/public/assets/admin/img/transactions/pending.png')}}" alt="transactions">
+                        </div>
+                    </div>
+                @elseif($balance < 0)
+                    <div class="col-sm-6 mb-2 col-md-4">
+                        <div class="resturant-card bg--1">
+                            <h2 class="title">
+                                {{\App\CentralLogics\Helpers::format_currency(abs($dm->wallet->collected_cash))}}
+                            </h2>
+                            <h5 class="subtitle">
+                                {{translate('messages.Payable_Balance')}}
+                            </h5>
+                            <img class="resturant-icon" src="{{asset('/public/assets/admin/img/transactions/pending.png')}}" alt="transactions">
+                        </div>
+                    </div>
+
+                @else
+                    <div class="col-sm-6 mb-2 col-md-4">
+                        <div class="resturant-card bg--1">
+                            <h2 class="title">
+                                {{\App\CentralLogics\Helpers::format_currency(0)}}
+                            </h2>
+                            <h5 class="subtitle">
+                                {{translate('messages.Balance')}}
+                            </h5>
+                            <img class="resturant-icon" src="{{asset('/public/assets/admin/img/transactions/pending.png')}}" alt="transactions">
+                        </div>
+                    </div>
+
+                @endif
+
+
+                <div class="col-sm-6 mb-2 col-md-4">
+                    <div class="resturant-card bg--1">
+                        <h2 class="title">
+                            {{\App\CentralLogics\Helpers::format_currency($dm->wallet?$dm->wallet->total_withdrawn:0.00)}}
+                        </h2>
+                        <h5 class="subtitle">
+                            {{translate('messages.Total_withdrawn')}}
+                        </h5>
+                        <img class="resturant-icon" src="{{asset('/public/assets/admin/img/transactions/pending.png')}}" alt="transactions">
+                    </div>
+                </div>
+
+                <div class="col-sm-6 mb-2 col-md-4">
+                    <div class="resturant-card bg--1">
+                        <h2 class="title">
+                            {{\App\CentralLogics\Helpers::format_currency($dm->wallet?$dm->wallet->pending_withdraw:0.00)}}
+                        </h2>
+                        <h5 class="subtitle">
+                            {{translate('messages.Pending_withdraw')}}
+                        </h5>
+                        <img class="resturant-icon" src="{{asset('/public/assets/admin/img/transactions/pending.png')}}" alt="transactions">
+                    </div>
+                </div>
+
+            @endif
         </div>
+    </div>
+    </div>
+    </div>
         @endif
 
         <!-- Card -->

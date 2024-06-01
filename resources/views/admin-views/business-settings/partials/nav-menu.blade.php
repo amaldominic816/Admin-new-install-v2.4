@@ -29,6 +29,9 @@
             <li class="nav-item">
                 <a class="nav-link {{ Request::is('admin/business-settings/business-setup/websocket') ?'active':'' }}" href="{{ route('admin.business-settings.business-setup',  ['tab' => 'websocket']) }}"  aria-disabled="true">{{translate('messages.websocket')}}</a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link {{ Request::is('admin/business-settings/business-setup/disbursement') ?'active':'' }}" href="{{ route('admin.business-settings.business-setup',  ['tab' => 'disbursement']) }}"  aria-disabled="true">{{translate('messages.disbursement')}}</a>
+            </li>
         </ul>
         <!-- End Nav -->
     </div>

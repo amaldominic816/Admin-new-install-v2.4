@@ -254,13 +254,8 @@ class Order extends Model
 
     public function scopeNotDigitalOrder($query)
     {
-        return $query->whereNotIn('payment_method', ['digital_payment']);
-        // return $query->where('payment_method', '!=', 'digital_payment');
-    }
-    public function scopeOfflinePrndingOrder($query)
-    {
-        return $query->where(function($q){
-            $q->whereNot('payment_method', 'offline_payment')->orwhereNot('order_status' , 'pending');
+        return $query->where(function ($q){
+            $q->whereNotIn('payment_method', ['digital_payment','offline_payment'])->orwhereNot('order_status' , 'pending');
         });
     }
 

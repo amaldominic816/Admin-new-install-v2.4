@@ -15,7 +15,7 @@
             <div class="search--button-wrapper">
                 <ul class="nav nav-tabs mr-auto transaction--table-nav">
                     <li class="nav-item">
-                        @php($account_transaction = \App\Models\AccountTransaction::where('from_type', 'store')->where('from_id', $store->id)->count())
+                        @php($account_transaction = \App\Models\AccountTransaction::where('from_type', 'store')->where('type', 'collected')->where('from_id', $store->id)->count())
                         @php($account_transaction = isset($account_transaction) ? $account_transaction : 0)
                         <a class="nav-link text-capitalize {{$sub_tab=='cash'?'active':''}}" href="{{route('admin.store.view', ['store'=>$store->id, 'tab'=> 'transaction', 'sub_tab'=>'cash'])}}"  aria-disabled="true">{{translate('cash_transaction')}} ({{$account_transaction}})</a>
                     </li>

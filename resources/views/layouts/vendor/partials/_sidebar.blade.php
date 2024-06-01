@@ -91,7 +91,7 @@
                                                     ->orWhere(function($query){
                                                         return $query->where('order_status','pending')->where('order_type', 'take_away');
                                                     });
-                                            })->StoreOrder()->NotDigitalOrder()->OfflinePrndingOrder()->count()}}
+                                            })->StoreOrder()->NotDigitalOrder()->count()}}
                                         </span>
                                     </span>
                                 </a>
@@ -103,9 +103,9 @@
                                         {{translate('messages.pending')}} {{(config('order_confirmation_model') == 'store' || \App\CentralLogics\Helpers::get_store_data()->self_delivery_system)?'':translate('messages.take_away')}}
                                             <span class="badge badge-soft-success badge-pill ml-1">
                                             @if(config('order_confirmation_model') == 'store' || \App\CentralLogics\Helpers::get_store_data()->self_delivery_system)
-                                            {{\App\Models\Order::where(['order_status'=>'pending','store_id'=>\App\CentralLogics\Helpers::get_store_id()])->StoreOrder()->OrderScheduledIn(30)->NotDigitalOrder()->OfflinePrndingOrder()->count()}}
+                                            {{\App\Models\Order::where(['order_status'=>'pending','store_id'=>\App\CentralLogics\Helpers::get_store_id()])->StoreOrder()->OrderScheduledIn(30)->NotDigitalOrder()->count()}}
                                             @else
-                                            {{\App\Models\Order::where(['order_status'=>'pending','store_id'=>\App\CentralLogics\Helpers::get_store_id(), 'order_type'=>'take_away'])->StoreOrder()->OrderScheduledIn(30)->NotDigitalOrder()->OfflinePrndingOrder()->count()}}
+                                            {{\App\Models\Order::where(['order_status'=>'pending','store_id'=>\App\CentralLogics\Helpers::get_store_id(), 'order_type'=>'take_away'])->StoreOrder()->OrderScheduledIn(30)->NotDigitalOrder()->count()}}
                                             @endif
                                         </span>
                                     </span>
@@ -118,7 +118,7 @@
                                     <span class="text-truncate sidebar--badge-container">
                                         {{translate('messages.confirmed')}}
                                             <span class="badge badge-soft-success badge-pill ml-1">
-                                            {{\App\Models\Order::whereIn('order_status',['confirmed', 'accepted'])->StoreOrder()->whereNotNull('confirmed')->where('store_id', \App\CentralLogics\Helpers::get_store_id())->OrderScheduledIn(30)->NotDigitalOrder()->OfflinePrndingOrder()->count()}}
+                                            {{\App\Models\Order::whereIn('order_status',['confirmed', 'accepted'])->StoreOrder()->whereNotNull('confirmed')->where('store_id', \App\CentralLogics\Helpers::get_store_id())->OrderScheduledIn(30)->NotDigitalOrder()->count()}}
                                         </span>
                                     </span>
                                 </a>
@@ -134,7 +134,7 @@
                                         {{translate('messages.processing')}}
                                         @endif
                                         <span class="badge badge-soft-info badge-pill ml-1">
-                                            {{\App\Models\Order::where(['order_status'=>'processing', 'store_id'=>\App\CentralLogics\Helpers::get_store_id()])->StoreOrder()->NotDigitalOrder()->OfflinePrndingOrder()->count()}}
+                                            {{\App\Models\Order::where(['order_status'=>'processing', 'store_id'=>\App\CentralLogics\Helpers::get_store_id()])->StoreOrder()->NotDigitalOrder()->count()}}
                                         </span>
                                     </span>
                                 </a>
@@ -145,7 +145,7 @@
                                     <span class="text-truncate sidebar--badge-container">
                                         {{translate('messages.ready_for_delivery')}}
                                         <span class="badge badge-soft-info badge-pill ml-1">
-                                            {{\App\Models\Order::where(['order_status'=>'handover', 'store_id'=>\App\CentralLogics\Helpers::get_store_id()])->StoreOrder()->NotDigitalOrder()->OfflinePrndingOrder()->count()}}
+                                            {{\App\Models\Order::where(['order_status'=>'handover', 'store_id'=>\App\CentralLogics\Helpers::get_store_id()])->StoreOrder()->NotDigitalOrder()->count()}}
                                         </span>
                                     </span>
                                 </a>
@@ -156,7 +156,7 @@
                                     <span class="text-truncate sidebar--badge-container">
                                         {{translate('messages.item_on_the_way')}}
                                         <span class="badge badge-soft-info badge-pill ml-1">
-                                            {{\App\Models\Order::where(['order_status'=>'picked_up', 'store_id'=>\App\CentralLogics\Helpers::get_store_id()])->StoreOrder()->NotDigitalOrder()->OfflinePrndingOrder()->count()}}
+                                            {{\App\Models\Order::where(['order_status'=>'picked_up', 'store_id'=>\App\CentralLogics\Helpers::get_store_id()])->StoreOrder()->NotDigitalOrder()->count()}}
                                         </span>
                                     </span>
                                 </a>
@@ -167,7 +167,7 @@
                                     <span class="text-truncate sidebar--badge-container">
                                         {{translate('messages.delivered')}}
                                             <span class="badge badge-soft-success badge-pill ml-1">
-                                            {{\App\Models\Order::where(['order_status'=>'delivered','store_id'=>\App\CentralLogics\Helpers::get_store_id()])->StoreOrder()->NotDigitalOrder()->OfflinePrndingOrder()->count()}}
+                                            {{\App\Models\Order::where(['order_status'=>'delivered','store_id'=>\App\CentralLogics\Helpers::get_store_id()])->StoreOrder()->NotDigitalOrder()->count()}}
                                         </span>
                                     </span>
                                 </a>
@@ -178,7 +178,7 @@
                                     <span class="text-truncate sidebar--badge-container">
                                         {{translate('messages.refunded')}}
                                             <span class="badge badge-soft-danger bg-light badge-pill ml-1">
-                                            {{\App\Models\Order::Refunded()->where(['store_id'=>\App\CentralLogics\Helpers::get_store_id()])->StoreOrder()->NotDigitalOrder()->OfflinePrndingOrder()->count()}}
+                                            {{\App\Models\Order::Refunded()->where(['store_id'=>\App\CentralLogics\Helpers::get_store_id()])->StoreOrder()->NotDigitalOrder()->count()}}
                                         </span>
                                     </span>
                                 </a>
@@ -472,16 +472,16 @@
                     @endif
                     @if(\App\CentralLogics\Helpers::employee_module_permission_check('bank_info'))
                     <!-- Business Settings -->
-                    <li class="navbar-vertical-aside-has-menu {{Request::is('store-panel/profile/bank-view')?'active':''}}">
-                        <a class="js-navbar-vertical-aside-menu-link nav-link"
-                            href="{{route('vendor.profile.bankView')}}"
-                            title="{{translate('messages.bank_info')}}">
-                            <i class="tio-shop nav-icon"></i>
-                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
-                                {{translate('messages.bank_info')}}
-                            </span>
-                        </a>
-                    </li>
+{{--                    <li class="navbar-vertical-aside-has-menu {{Request::is('store-panel/profile/bank-view')?'active':''}}">--}}
+{{--                        <a class="js-navbar-vertical-aside-menu-link nav-link"--}}
+{{--                            href="{{route('vendor.profile.bankView')}}"--}}
+{{--                            title="{{translate('messages.bank_info')}}">--}}
+{{--                            <i class="tio-shop nav-icon"></i>--}}
+{{--                            <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">--}}
+{{--                                {{translate('messages.bank_info')}}--}}
+{{--                            </span>--}}
+{{--                        </a>--}}
+{{--                    </li>--}}
                     @endif
 
 
@@ -495,6 +495,17 @@
                                 class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{translate('messages.my_wallet')}}</span>
                         </a>
                     </li>
+
+
+                        <li class="navbar-vertical-aside-has-menu {{Request::is('store-panel/withdraw-method*')?'active':''}}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{route('vendor.wallet-method.index')}}" title="{{translate('messages.my_wallet')}}"
+                            >
+                                <i class="tio-museum nav-icon"></i>
+                                <span
+                                    class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{translate('messages.disbursement_method')}}</span>
+                            </a>
+                        </li>
+
                     @endif
                     <!-- End StoreWallet -->
                     @if(\App\CentralLogics\Helpers::employee_module_permission_check('reviews'))
@@ -533,6 +544,14 @@
                         <a class="nav-link " href="{{ route('vendor.report.expense-report') }}" title="{{ translate('messages.expense_report') }}">
                             <span class="tio-money nav-icon"></span>
                             <span class="text-truncate">{{ translate('messages.expense_report') }}</span>
+                        </a>
+                    </li>
+
+                    <li class="navbar-vertical-aside-has-menu {{ Request::is('store-panel/report/disbursement-report') ? 'active' : '' }}">
+                        <a class="nav-link " href="{{ route('vendor.report.disbursement-report') }}"
+                           title="{{ translate('messages.disbursement_report') }}">
+                            <span class="tio-saving nav-icon"></span>
+                            <span class="text-truncate">{{ translate('messages.disbursement_report') }}</span>
                         </a>
                     </li>
                     @endif

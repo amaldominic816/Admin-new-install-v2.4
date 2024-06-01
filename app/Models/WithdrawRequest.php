@@ -17,6 +17,18 @@ class WithdrawRequest extends Model
     public function vendor(){
         return $this->belongsTo(Vendor::class);
     }
+    public function method(){
+        return $this->belongsTo(WithdrawalMethod::class,'withdrawal_method_id');
+    }
+
+
+    public function disbursementMethod(){
+        return $this->belongsTo(DisbursementWithdrawalMethod::class,'withdrawal_method_id');
+    }
+
+    public function deliveryman(){
+        return $this->belongsTo(DeliveryMan::class);
+    }
 
     protected static function booted()
     {

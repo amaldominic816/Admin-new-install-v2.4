@@ -150,6 +150,11 @@ class Store extends Model
         return $this->hasManyThrough(Review::class, Item::class);
     }
 
+    public function disbursement_method()
+    {
+        return $this->hasOne(DisbursementWithdrawalMethod::class)->where('is_default',1);
+    }
+
     public function getScheduleOrderAttribute($value)
     {
         return (boolean)(\App\CentralLogics\Helpers::schedule_order()?$value:0);

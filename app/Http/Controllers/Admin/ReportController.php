@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exports\DisbursementReportExport;
+use App\Models\DeliveryMan;
+use App\Models\DisbursementDetails;
+use App\Models\WithdrawalMethod;
 use Carbon\Carbon;
 use App\Models\Item;
 use App\Models\User;
@@ -348,7 +352,7 @@ class ReportController extends Controller
                 ->notRefunded()
                 ->sum(DB::raw('admin_commission -  delivery_fee_comission'));
             // ->sum(DB::raw('(admin_commission + admin_expense) - delivery_fee_comission'));
-    
+
             $admin_earned_delivery_commission = OrderTransaction::with('order', 'order.details', 'order.customer', 'order.store')->when(isset($zone), function ($query) use ($zone) {
                 return $query->where('zone_id', $zone->id);
             })
@@ -3210,5 +3214,178 @@ class ReportController extends Controller
             'count' => count($items),
             'view' => view('admin-views.report.partials._stock_table', compact('items'))->render()
         ]);
+    }
+
+    public function disbursement_report(Request $request,$tab = 'store')
+    {
+        $from =  null;
+        $to = null;
+        $filter = $request->query('filter', 'all_time');
+        if($filter == 'custom'){
+            $from = $request->from ?? null;
+            $to = $request->to ?? null;
+        }
+        $key = explode(' ', $request['search']);
+        $zone_id = $request->query('zone_id', isset(auth('admin')?->user()?->zone_id) ? auth('admin')?->user()?->zone_id : 'all');
+        $zone = is_numeric($zone_id) ? Zone::findOrFail($zone_id) : null;
+        $store_id = $request->query('store_id', 'all');
+        $store = is_numeric($store_id) ? Store::findOrFail($store_id) : null;
+        $delivery_man_id = $request->query('delivery_man_id', 'all');
+        $delivery_man = is_numeric($delivery_man_id) ? DeliveryMan::findOrFail($delivery_man_id) : null;
+        $withdrawal_methods = WithdrawalMethod::ofStatus(1)->get();
+        $status = $request->query('status', 'all');
+        $payment_method_id = $request->query('payment_method_id', 'all');
+        $module_id = $request->query('module_id', 'all');
+
+        $dis = DisbursementDetails::
+        when((isset($tab) && ($tab == 'store')), function ($query) {
+            return $query->whereNotNull('store_id');
+        })
+            ->when((isset($tab) && ($tab == 'delivery_man')), function ($query) {
+                return $query->whereNotNull('delivery_man_id');
+            })
+            ->when((isset($zone) && ($tab == 'store')), function ($query) use ($zone) {
+                return $query->whereHas('store',function($q)use ($zone){
+                    $q->where('zone_id', $zone->id);
+                });
+            })
+            ->when((isset($store) && ($tab == 'store')), function ($query) use ($store) {
+                return $query->where('store_id', $store->id);
+            })
+            ->when((isset($module_id) &&  is_numeric($module_id)&& ($tab == 'store')), function ($query) use ($module_id) {
+                return $query->whereHas('store', function ($query) use ($module_id) {
+                    $query->where('module_id',$module_id);
+                });
+            })
+            ->when((isset($zone) && ($tab == 'delivery_man')), function ($query) use ($zone) {
+                return $query->whereHas('store',function($q)use ($zone){
+                    $q->where('zone_id', $zone->id);
+                });
+            })
+            ->when((isset($delivery_man) && ($tab == 'delivery_man')), function ($query) use ($delivery_man) {
+                return $query->where('delivery_man_id', $delivery_man->id);
+            })
+            ->when((isset($payment_method_id) && ($payment_method_id != 'all')), function ($query) use ($payment_method_id) {
+                return $query->whereHas('withdraw_method',function($q)use ($payment_method_id){
+                    $q->where('withdrawal_method_id', $payment_method_id);
+                });
+            })
+            ->when((isset($status) && ($status != 'all')), function ($query) use ($status) {
+                return $query->where('status', $status);
+            })
+            ->when(isset($filter) , function ($query) use ($filter,$from, $to) {
+                return $query->applyDateFilter($filter, $from, $to);
+            })
+            ->when(isset($key), function ($q) use ($key){
+                $q->where(function ($q) use ($key) {
+                    foreach ($key as $value) {
+                        $q->orWhere('disbursement_id', 'like', "%{$value}%")
+                            ->orWhere('status', 'like', "%{$value}%");
+                    }
+                });
+            })
+            ->latest();
+
+        $total_disbursements= $dis->get();
+
+        $disbursements= $dis->paginate(config('default_pagination'))->withQueryString();
+
+        $pending =(float) $total_disbursements->where('status','pending')->sum('disbursement_amount');
+        $completed =(float) $total_disbursements->where('status','completed')->sum('disbursement_amount');
+        $canceled =(float) $total_disbursements->where('status','canceled')->sum('disbursement_amount');
+
+        return view('admin-views.report.disbursement-report', compact('disbursements','pending', 'completed','canceled','zone', 'store','filter','from','to','withdrawal_methods','status','payment_method_id','tab'));
+
+    }
+    public function disbursement_report_export(Request $request,$type,$tab = 'store')
+    {
+        $from =  null;
+        $to = null;
+        $filter = $request->query('filter', 'all_time');
+        if($filter == 'custom'){
+            $from = $request->from ?? null;
+            $to = $request->to ?? null;
+        }
+        $key = explode(' ', $request['search']);
+        $zone_id = $request->query('zone_id', isset(auth('admin')?->user()?->zone_id) ? auth('admin')?->user()?->zone_id : 'all');
+        $zone = is_numeric($zone_id) ? Zone::findOrFail($zone_id) : null;
+        $store_id = $request->query('store_id', 'all');
+        $store = is_numeric($store_id) ? Store::findOrFail($store_id) : null;
+        $delivery_man_id = $request->query('delivery_man_id', 'all');
+        $delivery_man = is_numeric($delivery_man_id) ? DeliveryMan::findOrFail($delivery_man_id) : null;
+        $withdrawal_methods = WithdrawalMethod::ofStatus(1)->get();
+        $status = $request->query('status', 'all');
+        $payment_method_id = $request->query('payment_method_id', 'all');
+        $module_id = $request->query('module_id', 'all');
+
+        $disbursements = DisbursementDetails::
+        when((isset($tab) && ($tab == 'store')), function ($query) {
+            return $query->whereNotNull('store_id');
+        })
+            ->when((isset($tab) && ($tab == 'delivery_man')), function ($query) {
+                return $query->whereNotNull('delivery_man_id');
+            })
+            ->when((isset($zone) && ($tab == 'store')), function ($query) use ($zone) {
+                return $query->whereHas('store',function($q)use ($zone){
+                    $q->where('zone_id', $zone->id);
+                });
+            })
+            ->when((isset($store) && ($tab == 'store')), function ($query) use ($store) {
+                return $query->where('store_id', $store->id);
+            })
+            ->when((isset($zone) && ($tab == 'delivery_man')), function ($query) use ($zone) {
+                return $query->whereHas('store',function($q)use ($zone){
+                    $q->where('zone_id', $zone->id);
+                });
+            })
+            ->when((isset($module_id) &&  is_numeric($module_id)&& ($tab == 'store')), function ($query) use ($module_id) {
+                return $query->whereHas('store', function ($query) use ($module_id) {
+                    $query->where('module_id',$module_id);
+                });
+            })
+            ->when((isset($delivery_man) && ($tab == 'delivery_man')), function ($query) use ($delivery_man) {
+                return $query->where('delivery_man_id', $delivery_man->id);
+            })
+            ->when((isset($payment_method_id) && ($payment_method_id != 'all')), function ($query) use ($payment_method_id) {
+                return $query->whereHas('withdraw_method',function($q)use ($payment_method_id){
+                    $q->where('withdrawal_method_id', $payment_method_id);
+                });
+            })
+            ->when((isset($status) && ($status != 'all')), function ($query) use ($status) {
+                return $query->where('status', $status);
+            })
+            ->when(isset($filter) , function ($query) use ($filter,$from, $to) {
+                return $query->applyDateFilter($filter, $from, $to);
+            })
+            ->when(isset($key), function ($q) use ($key){
+                $q->where(function ($q) use ($key) {
+                    foreach ($key as $value) {
+                        $q->orWhere('disbursement_id', 'like', "%{$value}%")
+                            ->orWhere('status', 'like', "%{$value}%");
+                    }
+                });
+            })
+            ->latest()->get();
+
+        $data=[
+            'type'=>$tab,
+            'disbursements' =>$disbursements,
+            'store'=>isset($store)?$store->name:null,
+            'delivery_man'=>isset($delivery_man)?$delivery_man->f_name.''.$delivery_man->f_name:null,
+            'search'=>$request->search??null,
+            'status'=>$status,
+            'zone'=>isset($zone)?$zone->name:null,
+            'filter'=>$filter,
+            'from'=>(($filter == 'custom') && $from)?$from:null,
+            'to'=>(($filter == 'custom') && $to)?$to:null,
+            'pending' =>(float) $disbursements->where('status','pending')->sum('disbursement_amount'),
+            'completed' =>(float) $disbursements->where('status','completed')->sum('disbursement_amount'),
+            'canceled' =>(float) $disbursements->where('status','canceled')->sum('disbursement_amount'),
+        ];
+        if($type == 'csv'){
+            return Excel::download(new DisbursementReportExport($data), 'DisbursementReport.csv');
+        }
+        return Excel::download(new DisbursementReportExport($data), 'DisbursementReport.xlsx');
+
     }
 }

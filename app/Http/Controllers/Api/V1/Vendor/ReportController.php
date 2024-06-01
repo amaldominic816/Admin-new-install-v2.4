@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\V1\Vendor;
 
+use App\Models\BusinessSetting;
+use App\Models\DisbursementDetails;
 use App\Models\Expense;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
@@ -49,6 +51,42 @@ class ReportController extends Controller
                 'expense' => $expense->items()
             ];
             return response()->json($data,200);
+    }
+
+    public function disbursement_report(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'limit' => 'required',
+            'offset' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+        $limit = $request['limit']??25;
+        $offset = $request['offset']??1;
+
+        $store_id = $request?->vendor?->stores[0]?->id;
+
+        $total_disbursements=DisbursementDetails::where('store_id',$store_id)->orderBy('created_at', 'desc')->get();
+        $paginator=DisbursementDetails::where('store_id',$store_id)->latest()->paginate($limit, ['*'], 'page', $offset);
+
+        $paginator->each(function ($data) {
+            $data->withdraw_method->method_fields = json_decode($data->withdraw_method->method_fields,true);
+        });
+
+        $data = [
+            'total_size' => $paginator->total(),
+            'limit' => $limit,
+            'offset' => $offset,
+            'pending' =>(float) $total_disbursements->where('status','pending')->sum('disbursement_amount'),
+            'completed' =>(float) $total_disbursements->where('status','completed')->sum('disbursement_amount'),
+            'canceled' =>(float) $total_disbursements->where('status','canceled')->sum('disbursement_amount'),
+            'complete_day' =>(int) BusinessSetting::where(['key'=>'store_disbursement_waiting_time'])->first()?->value,
+            'disbursements' => $paginator->items()
+        ];
+        return response()->json($data,200);
+
     }
 
 

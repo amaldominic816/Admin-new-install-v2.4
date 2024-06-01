@@ -10,7 +10,7 @@
                 <th>{{ translate('filter_criteria') }} -</th>
                 <th></th>
                 <th></th>
-                <th> 
+                <th>
 
                     {{ translate('Search_Bar_Content')  }}- {{ $data['search'] ??translate('N/A') }}
 
@@ -43,17 +43,23 @@
                     {{$at->delivery_man->f_name.' '.$at->delivery_man->l_name}}
                     @else
                     {{translate('messages.deliveryman_deleted')}}
-                    @endif 
+                    @endif
                 </td>
                 <td>
                     @if($at->delivery_man)
                     {{$at->delivery_man->phone}}
                     @else
                     {{translate('messages.deliveryman_deleted')}}
-                    @endif 
+                    @endif
                 </td>
                 <td>{{translate($at->method)}}</td>
-                <td>{{$at['ref']}}</td>
+                @if(  $at['ref'] == ['delivery_man_wallet_adjustment_full'])
+                    <td>{{ translate('wallet_adjusted') }}</td>
+                @elseif( $at['ref'] == [ 'delivery_man_wallet_adjustment_partial']) 
+                    <td>{{ translate('wallet_adjusted_partially') }}</td>
+                @else
+                    <td>{{$at['ref']}}</td>
+                @endif
             </tr>
         @endforeach
         </tbody>

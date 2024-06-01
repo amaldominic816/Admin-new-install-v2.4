@@ -101,7 +101,7 @@ class BkashPaymentController extends Controller
 
         $requestbody = array(
             'mode' => '0011',
-            'amount' => round($data->payment_amount, 2),
+            'amount' => (string)round($data->payment_amount, 2),
             'currency' => 'BDT',
             'intent' => 'sale',
             'payerReference' => $payer->phone,

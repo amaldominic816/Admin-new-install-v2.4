@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use App\Models\AdminPromotionalBanner;
 use App\Models\FlutterSpecialCriteria;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
@@ -73,6 +74,8 @@ class BusinessSettingsController extends Controller
             return view('admin-views.business-settings.landing-index');
         } else if ($tab == 'websocket') {
             return view('admin-views.business-settings.websocket-index');
+        } else if ($tab == 'disbursement') {
+            return view('admin-views.business-settings.disbursement-index');
         }
     }
 
@@ -82,6 +85,17 @@ class BusinessSettingsController extends Controller
             Toastr::info(translate('messages.update_option_is_disable_for_demo'));
             return back();
         }
+
+        BusinessSetting::updateOrInsert(['key' => 'min_amount_to_pay_dm'], [
+            'value' => $request['min_amount_to_pay_dm']
+        ]);
+        BusinessSetting::updateOrInsert(['key' => 'cash_in_hand_overflow_delivery_man'], [
+            'value' => $request['cash_in_hand_overflow_delivery_man'] ?? 0
+        ]);
+        BusinessSetting::updateOrInsert(['key' => 'dm_max_cash_in_hand'], [
+            'value' => $request['dm_max_cash_in_hand']
+        ]);
+
         DB::table('business_settings')->updateOrInsert(['key' => 'dm_tips_status'], [
             'value' => $request['dm_tips_status']
         ]);
@@ -137,6 +151,16 @@ class BusinessSettingsController extends Controller
         if ($request['product_approval'] == null){
             $this->product_approval_all();
         }
+        BusinessSetting::updateOrInsert(['key' => 'cash_in_hand_overflow_store'], [
+            'value' => $request['cash_in_hand_overflow_store'] ?? 0
+        ]);
+        BusinessSetting::updateOrInsert(['key' => 'cash_in_hand_overflow_store_amount'], [
+            'value' => $request['cash_in_hand_overflow_store_amount']
+        ]);
+        BusinessSetting::updateOrInsert(['key' => 'min_amount_to_pay_store'], [
+            'value' => $request['min_amount_to_pay_store']
+        ]);
+
         DB::table('business_settings')->updateOrInsert(['key' => 'canceled_by_store'], [
             'value' => $request['canceled_by_store']
         ]);
@@ -206,6 +230,183 @@ class BusinessSettingsController extends Controller
 
         Toastr::success(translate('messages.successfully_updated_to_changes_restart_app'));
         return back();
+    }
+
+
+    public function update_disbursement(Request $request)
+    {
+        if (env('APP_MODE') == 'demo') {
+            Toastr::info(translate('messages.update_option_is_disable_for_demo'));
+            return back();
+        }
+
+        BusinessSetting::updateOrInsert(['key' => 'disbursement_type'], [
+            'value' => $request['disbursement_type']
+        ]);
+
+        BusinessSetting::updateOrInsert(['key' => 'store_disbursement_time_period'], [
+            'value' => $request['store_disbursement_time_period']
+        ]);
+
+        BusinessSetting::updateOrInsert(['key' => 'store_disbursement_week_start'], [
+            'value' => $request['store_disbursement_week_start']
+        ]);
+
+        BusinessSetting::updateOrInsert(['key' => 'store_disbursement_waiting_time'], [
+            'value' => $request['store_disbursement_waiting_time']
+        ]);
+
+        BusinessSetting::updateOrInsert(['key' => 'store_disbursement_create_time'], [
+            'value' => $request['store_disbursement_create_time']
+        ]);
+
+        BusinessSetting::updateOrInsert(['key' => 'store_disbursement_min_amount'], [
+            'value' => $request['store_disbursement_min_amount']
+        ]);
+
+        BusinessSetting::updateOrInsert(['key' => 'dm_disbursement_time_period'], [
+            'value' => $request['dm_disbursement_time_period']
+        ]);
+        BusinessSetting::updateOrInsert(['key' => 'dm_disbursement_week_start'], [
+            'value' => $request['dm_disbursement_week_start']
+        ]);
+        BusinessSetting::updateOrInsert(['key' => 'dm_disbursement_waiting_time'], [
+            'value' => $request['dm_disbursement_waiting_time']
+        ]);
+        BusinessSetting::updateOrInsert(['key' => 'dm_disbursement_create_time'], [
+            'value' => $request['dm_disbursement_create_time']
+        ]);
+        BusinessSetting::updateOrInsert(['key' => 'dm_disbursement_min_amount'], [
+            'value' => $request['dm_disbursement_min_amount']
+        ]);
+        BusinessSetting::updateOrInsert(['key' => 'system_php_path'], [
+            'value' => $request['system_php_path']
+        ]);
+
+        if(function_exists('exec')){
+            $data = self::generateCronCommand(disbursement_type: $request['disbursement_type']);
+            $scriptPath = 'script.sh';
+            exec('sh '. $scriptPath);
+            BusinessSetting::updateOrInsert(['key' => 'store_disbursement_command'], [
+                'value' => $data['storeCronCommand']
+            ]);
+            BusinessSetting::updateOrInsert(['key' => 'dm_disbursement_command'], [
+                'value' => $data['dmCronCommand']
+            ]);
+            Toastr::success(translate('messages.successfully_updated_disbursement_functionality'));
+            return back();
+        }else{
+            $data = self::generateCronCommand(disbursement_type: $request['disbursement_type']);
+            BusinessSetting::updateOrInsert(['key' => 'store_disbursement_command'], [
+                'value' => $data['storeCronCommand']
+            ]);
+            BusinessSetting::updateOrInsert(['key' => 'dm_disbursement_command'], [
+                'value' => $data['dmCronCommand']
+            ]);
+            if($request['disbursement_type'] == 'automated'){
+                Session::flash('disbursement_exec', true);
+                Toastr::warning(translate('messages.Servers_PHP_exec_function_is_disabled_check_dependencies_&_start_cron_job_manualy_in_server'));
+            }
+            Toastr::success(translate('messages.successfully_updated_disbursement_functionality'));
+            return back();
+        }
+
+    }
+
+    private function dmSchedule(){
+        $key = [
+            'dm_disbursement_time_period','dm_disbursement_week_start','dm_disbursement_create_time'
+        ];
+        $settings =  array_column(BusinessSetting::whereIn('key', $key)->get()->toArray(), 'value', 'key');
+
+        $scheduleFrequency = $settings['dm_disbursement_time_period'] ?? 'daily';
+        $weekDay = $settings['dm_disbursement_week_start'] ?? 'sunday';
+        $time =$settings['dm_disbursement_create_time'] ?? '12:00';
+
+
+        $time= explode(":",$time);
+
+        $hour= $time[0] ;
+        $min= $time[1] ;
+
+        $days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        $day = array_search($weekDay,$days);
+        $schedule = "* * * * *";
+        if($scheduleFrequency == 'daily' ){
+            $schedule =  $min. " ".$hour." "."* * *";
+
+        }
+        elseif($scheduleFrequency == 'weekly' ){
+
+            $schedule =  $min. " ".$hour." "."* * " .$day;
+        }
+        elseif($scheduleFrequency == 'monthly' ){
+            $schedule =  $min. " ".$hour." "."28-31 * *";
+
+        }
+        return $schedule;
+    }
+
+    private function storeSchedule(){
+        $key = [
+            'store_disbursement_time_period','store_disbursement_week_start','store_disbursement_create_time'
+        ];
+        $settings =  array_column(BusinessSetting::whereIn('key', $key)->get()->toArray(), 'value', 'key');
+
+        $scheduleFrequency = $settings['store_disbursement_time_period'] ?? 'daily';
+        $weekDay = $settings['store_disbursement_week_start'] ?? 'sunday';
+        $time =$settings['store_disbursement_create_time'] ?? '12:00';
+
+
+        $time= explode(":",$time);
+
+        $hour= $time[0] ;
+        $min= $time[1] ;
+
+        $days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        $day = array_search($weekDay,$days);
+        $schedule = "* * * * *";
+        if($scheduleFrequency == 'daily' ){
+            $schedule =  $min. " ".$hour." "."* * *";
+
+        }
+        elseif($scheduleFrequency == 'weekly' ){
+
+            $schedule =  $min. " ".$hour." "."* * " .$day;
+        }
+        elseif($scheduleFrequency == 'monthly' ){
+            $schedule =  $min. " ".$hour." "."28-31 * *";
+
+        }
+        return $schedule;
+    }
+
+    private function generateCronCommand($disbursement_type = 'automated') {
+        $system_php_path = BusinessSetting::where('key', 'system_php_path')->first();
+        $system_php_path = $system_php_path ? $system_php_path->value : "/usr/bin/php";
+        $dmSchedule = self::dmSchedule();
+        $storeSchedule = self::storeSchedule();
+        $scriptFilename = $_SERVER['SCRIPT_FILENAME'];
+        $rootPath = dirname($scriptFilename);
+        $phpCommand = $system_php_path;
+        $dmScriptPath = $rootPath . "/artisan dm:disbursement";
+        $storeScriptPath = $rootPath . "/artisan store:disbursement";
+        $dmClearCronCommand = "(crontab -l | grep -v \"$phpCommand $dmScriptPath\") | crontab -";
+        $dmCronCommand = $disbursement_type == 'automated'?"(crontab -l ; echo \"$dmSchedule $phpCommand $dmScriptPath\") | crontab -":"";
+        $storeClearCronCommand = "(crontab -l | grep -v \"$phpCommand $storeScriptPath\") | crontab -";
+        $storeCronCommand = $disbursement_type == 'automated'?"(crontab -l ; echo \"$storeSchedule $phpCommand $storeScriptPath\") | crontab -":"";
+        $scriptContent = "#!/bin/bash\n";
+        $scriptContent .= $dmClearCronCommand."\n";
+        $scriptContent .= $dmCronCommand."\n";
+        $scriptContent .= $storeClearCronCommand."\n";
+        $scriptContent .= $storeCronCommand."\n";
+        $scriptFilePath = $rootPath . "/script.sh";
+        file_put_contents($scriptFilePath, $scriptContent);
+
+        return [
+            'dmCronCommand' => $dmCronCommand,
+            'storeCronCommand' =>  $storeCronCommand
+        ];
     }
 
     public function business_setup(Request $request)

@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Mail\OrderVerificationMail;
+use App\Mail\PlaceOrder;
+use App\Mail\UserOfflinePaymentMail;
 use App\Models\Item;
 use App\Models\Zone;
 use App\Models\Order;
@@ -575,7 +578,7 @@ class OrderController extends Controller
             $deliveryman->save();
             $deliveryman->increment('assigned_order_count');
 
-            $fcm_token= $order?->guest?->fcm_token ?? $order?->customer?->cm_firebase_token;
+            $fcm_token= $order->is_guest == 0 ? $order?->customer?->cm_firebase_token : $order?->guest?->fcm_token;
             $value = Helpers::order_status_update_message('accepted',$order->module->module_type,$order->customer?
             $order?->customer?->current_language_key:'en');
             $value = Helpers::text_variable_data_format(value:$value,store_name:$order->store?->name,order_id:$order->id,user_name:"{$order?->customer?->f_name} {$order?->customer?->l_name}",delivery_man_name:"{$order->delivery_man?->f_name} {$order->delivery_man?->l_name}");
@@ -1566,10 +1569,12 @@ class OrderController extends Controller
     public function offline_payment(Request $request){
             $order=  Order::findOrFail($request->id);
             if($request->verify == 'yes'){
+
                 $order->payment_status = 'paid';
                 $order->confirmed = now();
                 $order->order_status = 'confirmed';
                 $order->save();
+                Helpers::send_order_notification($order);
                 $order->offline_payments()->update([
                     'status'=> 'verified'
                 ]);
@@ -1581,10 +1586,7 @@ class OrderController extends Controller
                         'payment_status'=> 'paid',
                     ]);
                 }
-
                 $value = Helpers::text_variable_data_format(value:Helpers::order_status_update_message('offline_verified',$order->module->module_type),store_name:$order->store?->name,order_id:$order->id,user_name:"{$order?->customer?->f_name} {$order?->customer?->l_name}",delivery_man_name:"{$order?->delivery_man?->f_name} {$order?->delivery_man?->l_name}");
-
-
                 $data = [
                     'title' => translate('messages.Your_Offline_payment_was_rejected'),
                     'description' => $value ??$request->note,
@@ -1593,7 +1595,7 @@ class OrderController extends Controller
                     'type' => 'order_status',
                 ];
 
-                $fcm= $order?->guest?->fcm_token ?? $order?->customer?->cm_firebase_token;
+                $fcm= $order->is_guest == 0 ? $order?->customer?->cm_firebase_token : $order?->guest?->fcm_token;
                 if($fcm){
                     Helpers::send_push_notif_to_device($fcm, $data);
                     DB::table('user_notifications')->insert([
@@ -1604,10 +1606,12 @@ class OrderController extends Controller
                     ]);
                 }
 
-                Helpers::send_order_notification($order);
+
                 $order->payment_method = $payment_method_name;
-                $this->sent_mail_on_offline_payment(status:'approved', name:$order?->customer?->f_name .' '.$order?->customer?->l_name, email:  $order?->customer?->email);
-            }
+                    if($order->is_guest == 0){
+                        $this->sent_mail_on_offline_payment(status:'approved', name:$order?->customer?->f_name .' '.$order?->customer?->l_name, email:  $order?->customer?->email , otp: $order->otp);
+                    }
+                }
 
             elseif($request->verify == 'switched_to_cod'){
                 $order->offline_payments()->update([
@@ -1620,6 +1624,11 @@ class OrderController extends Controller
                 }
                 Helpers::send_order_notification($order);
                 $order->payment_method = 'cash_on_delivery';
+
+                if($order->is_guest == 0){
+                    $this->sent_mail_on_offline_payment(status:'COD', name:$order?->customer?->f_name .' '.$order?->customer?->l_name, email:  $order?->customer?->email ,order_id: $order->id);
+                }
+
             }
 
             else{
@@ -1639,7 +1648,7 @@ class OrderController extends Controller
                         'type' => 'order_status',
                     ];
 
-                    $fcm= $order?->guest?->fcm_token ?? $order?->customer?->cm_firebase_token;
+                    $fcm= $order->is_guest == 0 ? $order?->customer?->cm_firebase_token : $order?->guest?->fcm_token ;
                     if($fcm){
                         Helpers::send_push_notif_to_device($fcm, $data);
                         DB::table('user_notifications')->insert([
@@ -1659,14 +1668,26 @@ class OrderController extends Controller
     }
 
 
-    private function sent_mail_on_offline_payment($status, $name ,$email){
+    private function sent_mail_on_offline_payment($status, $name ,$email ,$otp=null ,$order_id = null){
         try
         {
-            if($status == 'approved' && config('mail.status') && Helpers::get_mail_status('offline_payment_approve_mail_status_user') == '1'){
-                Mail::to($email)->send(new \App\Mail\UserOfflinePaymentMail($name, 'approved'));
+            if($status == 'approved' && config('mail.status') ){
+
+                if(Helpers::get_mail_status('offline_payment_approve_mail_status_user') == '1'){
+                    Mail::to($email)->send(new UserOfflinePaymentMail($name, 'approved'));
+                }
+                $order_verification_mail_status = Helpers::get_mail_status('order_verification_mail_status_user');
+                if ( $order_verification_mail_status == '1'  && $otp) {
+                    Mail::to($email)->send(new OrderVerificationMail($otp, $name));
+                }
+            }
+
+            if($status == 'COD' && $order_id  && config('mail.status'))
+            {
+                Mail::to($email)->send(new PlaceOrder($order_id));
             }
             if($status == 'denied' && config('mail.status') && Helpers::get_mail_status('offline_payment_deny_mail_status_user') == '1'){
-                Mail::to($email)->send(new \App\Mail\UserOfflinePaymentMail($name, 'denied'));
+                Mail::to($email)->send(new UserOfflinePaymentMail($name, 'denied'));
             }
         }
         catch(\Exception $e)
@@ -1680,13 +1701,8 @@ class OrderController extends Controller
 
     public function offline_verification_list(Request $request, $status)
     {
-        // dd($status);
         $key = explode(' ', $request['search']);
-
-
-
         $orders = Order::with(['customer', 'store'])->has('offline_payments')
-
             ->when(isset($key), function ($query) use ($key) {
                 return $query->where(function ($q) use ($key) {
                     foreach ($key as $value) {

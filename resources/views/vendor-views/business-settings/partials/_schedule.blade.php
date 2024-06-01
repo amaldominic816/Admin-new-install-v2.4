@@ -108,7 +108,7 @@ foreach ($store->schedules as $schedule)
 </div>
 
 <div class="schedule-item">
-    <span class="btn">{{translate('messages.thirsday')}} :</span>
+    <span class="btn">{{translate('messages.thursday')}} :</span>
     <div class="schedult-date-content">
         @if(isset($data['4']) && count($data['4']))
             @foreach ($data['4'] as $day)
@@ -137,7 +137,7 @@ foreach ($store->schedules as $schedule)
         @else
             <span class="btn btn-sm btn-outline-danger m-1 disabled">{{translate('messages.Offday')}}</span>
         @endif
-        <span class="btn add--primary" data-toggle="modal" data-target="#exampleModal" data-dayid="4" data-day="{{translate('messages.thirsday')}}"><i class="tio-add"></i></span>
+        <span class="btn add--primary" data-toggle="modal" data-target="#exampleModal" data-dayid="4" data-day="{{translate('messages.thursday')}}"><i class="tio-add"></i></span>
     </div>
 </div>
 

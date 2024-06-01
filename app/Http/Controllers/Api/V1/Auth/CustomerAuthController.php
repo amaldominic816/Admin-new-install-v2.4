@@ -318,6 +318,18 @@ class CustomerAuthController extends Controller
             info($ex->getMessage());
         }
         if($request->guest_id  && isset($user->id)){
+
+            $userStoreIds = Cart::where('user_id', $request->guest_id)
+                ->join('items', 'carts.item_id', '=', 'items.id')
+                ->pluck('items.store_id')
+                ->toArray();
+
+            Cart::where('user_id', $user->id)
+                ->whereHas('item', function ($query) use ($userStoreIds) {
+                    $query->whereNotIn('store_id', $userStoreIds);
+                })
+                ->delete();
+
             Cart::where('user_id', $request->guest_id)->update(['user_id' => $user->id,'is_guest' => 0]);
         }
         return response()->json(['token' => $token, 'is_phone_verified' => 0, 'phone_verify_end_url' => "api/v1/auth/verify-phone"], 200);
@@ -405,6 +417,18 @@ class CustomerAuthController extends Controller
                 DB::table('users')->where('phone', $user->phone)->update(['ref_code' => $ref_code]);
             }
             if($request->guest_id  && isset($user->id)){
+
+                $userStoreIds = Cart::where('user_id', $request->guest_id)
+                    ->join('items', 'carts.item_id', '=', 'items.id')
+                    ->pluck('items.store_id')
+                    ->toArray();
+
+                Cart::where('user_id', $user->id)
+                    ->whereHas('item', function ($query) use ($userStoreIds) {
+                        $query->whereNotIn('store_id', $userStoreIds);
+                    })
+                    ->delete();
+
                 Cart::where('user_id', $request->guest_id)->update(['user_id' => $user->id,'is_guest' => 0]);
             }
             return response()->json(['token' => $token, 'is_phone_verified' => auth()->user()->is_phone_verified], 200);

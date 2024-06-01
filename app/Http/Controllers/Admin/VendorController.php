@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exports\DisbursementHistoryExport;
+use App\Models\DisbursementDetails;
 use App\Models\Item;
 use App\Models\Zone;
 use App\Models\AddOn;
@@ -453,8 +455,50 @@ class VendorController extends Controller
         } else if ($tab == 'meta-data') {
             $store = Store::withoutGlobalScope('translate')->findOrFail($store_id);
             return view('admin-views.vendor.view.meta-data', compact('store', 'sub_tab'));
+        } else if ($tab == 'disbursements') {
+            $disbursements=DisbursementDetails::where('store_id', $store->id)
+                ->when(isset($key), function ($q) use ($key){
+                    $q->where(function ($q) use ($key) {
+                        foreach ($key as $value) {
+                            $q->orWhere('disbursement_id', 'like', "%{$value}%")
+                                ->orWhere('status', 'like', "%{$value}%");
+                        }
+                    });
+                })
+                ->latest()->paginate(config('default_pagination'));
+            return view('admin-views.vendor.view.disbursement', compact('store','disbursements'));
+
         }
         return view('admin-views.vendor.view.index', compact('store', 'wallet'));
+    }
+
+    public function disbursement_export(Request $request,$id,$type)
+    {
+        $key = explode(' ', $request['search']);
+
+        $store= Store::find($id);
+        $disbursements=DisbursementDetails::where('store_id', $store->id)
+            ->when(isset($key), function ($q) use ($key){
+                $q->where(function ($q) use ($key) {
+                    foreach ($key as $value) {
+                        $q->orWhere('disbursement_id', 'like', "%{$value}%")
+                            ->orWhere('status', 'like', "%{$value}%");
+                    }
+                });
+            })
+            ->latest()->get();
+        $data = [
+            'disbursements'=>$disbursements,
+            'search'=>$request->search??null,
+            'store'=>$store->name,
+            'type'=>'store',
+        ];
+
+        if ($request->type == 'excel') {
+            return Excel::download(new DisbursementHistoryExport($data), 'Disbursementlist.xlsx');
+        } else if ($request->type == 'csv') {
+            return Excel::download(new DisbursementHistoryExport($data), 'Disbursementlist.csv');
+        }
     }
 
     public function view_tab(Store $store)
@@ -1055,9 +1099,17 @@ class VendorController extends Controller
         $withdraw = WithdrawRequest::findOrFail($id);
         $withdraw->approved = $request->approved;
         $withdraw->transaction_note = $request['note'];
+
+        $wallet = StoreWallet::where('vendor_id', $withdraw->vendor_id)->first();
+        if ((string) $wallet->total_earning <  (string) ($wallet->total_withdrawn + $wallet->pending_withdraw) ) {
+            Toastr::error(translate('messages.Blalnce_mismatched_total_earning_is_too_low'));
+            return redirect()->route('admin.restaurant.withdraw_list');
+        }
+
+
         if ($request->approved == 1) {
-            StoreWallet::where('vendor_id', $withdraw->vendor_id)->increment('total_withdrawn', $withdraw->amount);
-            StoreWallet::where('vendor_id', $withdraw->vendor_id)->decrement('pending_withdraw', $withdraw->amount);
+            $wallet->increment('total_withdrawn', $withdraw->amount);
+            $wallet->decrement('pending_withdraw', $withdraw->amount);
             $withdraw->save();
             try
             {
@@ -1073,7 +1125,7 @@ class VendorController extends Controller
             Toastr::success(translate('messages.seller_payment_approved'));
             return redirect()->route('admin.transactions.store.withdraw_list');
         } else if ($request->approved == 2) {
-            StoreWallet::where('vendor_id', $withdraw->vendor_id)->decrement('pending_withdraw', $withdraw->amount);
+            $wallet->decrement('pending_withdraw', $withdraw->amount);
             $withdraw->save();
             try
             {
@@ -1596,7 +1648,7 @@ class VendorController extends Controller
     public function cash_export($type,$store_id)
     {
         $store = Store::find($store_id);
-        $account = AccountTransaction::where('from_type', 'store')->where('from_id', $store->id)->get();
+        $account = AccountTransaction::where('from_type', 'store')->where('from_id', $store->id)->where('type', 'collected')->get();
         $data=[
             'data' =>$account,
             'search' =>$request['search'] ?? null,

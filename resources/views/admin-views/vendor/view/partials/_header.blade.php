@@ -72,6 +72,9 @@
                 <li class="nav-item">
                     <a class="nav-link {{request('tab')=='meta-data'?'active':''}}" href="{{route('admin.store.view', ['store'=>$store->id, 'tab'=> 'meta-data'])}}"  aria-disabled="true">{{translate('meta_data')}}</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link  {{request('tab')=='disbursements' ?'active':''}}" href="{{route('admin.store.view', ['store'=>$store->id, 'tab'=> 'disbursements'])}}"  aria-disabled="true">{{translate('messages.disbursements')}}</a>
+                </li>
             </ul>
             <!-- End Nav -->
         </div>

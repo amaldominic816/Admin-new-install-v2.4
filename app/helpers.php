@@ -1,10 +1,16 @@
 <?php
 
+use App\Models\Admin;
 use App\Models\Order;
+use App\Models\Store;
+use App\Models\AdminWallet;
+use App\Models\DeliveryMan;
 use App\Models\WalletPayment;
 use App\CentralLogics\Helpers;
 use App\CentralLogics\OrderLogic;
+use App\Models\AccountTransaction;
 use Illuminate\Support\Facades\DB;
+use App\Mail\OrderVerificationMail;
 use Illuminate\Support\Facades\App;
 use App\CentralLogics\CustomerLogic;
 use Illuminate\Support\Facades\Mail;
@@ -19,22 +25,6 @@ if (! function_exists('translate')) {
         $key = strpos($key, 'messages.') === 0?substr($key,9):$key;
         $local = app()->getLocale();
         try {
-
-            // $language=\App\Models\BusinessSetting::where('key','language')->first();
-            // $language = $language->value ?? '';
-            // // dd($language);
-            // foreach(json_decode($language) as $lang){
-            //     // if($lang != $local){
-            //         $lang_array = include(base_path('resources/lang/' . $lang . '/messages.php'));
-            //         if (!array_key_exists($key, $lang_array)) {
-            //             $processed_key = str_replace('_', ' ', Helpers::remove_invalid_charcaters($key));
-            //             $lang_array[$key] = $processed_key;
-            //             $str = "<?php return " . var_export($lang_array, true) . ";";
-            //             file_put_contents(base_path('resources/lang/' . $lang . '/messages.php'), $str);
-            //         // }
-            //     }
-            // }
-
             $lang_array = include(base_path('resources/lang/' . $local . '/messages.php'));
             $processed_key = ucfirst(str_replace('_', ' ', Helpers::remove_invalid_charcaters($key)));
 
@@ -52,6 +42,69 @@ if (! function_exists('translate')) {
         }
 
         return $result;
+    }
+}
+
+if (! function_exists('collect_cash_fail')) {
+    function collect_cash_fail($data){
+        return 0;
+    }
+}
+if (! function_exists('collect_cash_success')) {
+    function collect_cash_success($data){
+
+        try {
+            $account_transaction = new AccountTransaction();
+            if($data->attribute === 'store_collect_cash_payments'){
+                $store = Store::where('vendor_id', $data->attribute_id)->first();
+                $store->status = 1;
+                $store->save();
+                $user_data = $store?->vendor;
+                $current_balance = $user_data?->wallet?->collected_cash ?? 0;
+                $account_transaction->from_type = 'store';
+                $account_transaction->from_id = $store?->vendor?->id;
+                $account_transaction->created_by = 'store';
+            }
+            elseif($data->attribute === 'deliveryman_collect_cash_payments'){
+                $user_data = DeliveryMan::findOrFail($data->attribute_id);
+                $user_data->status = 1;
+                $user_data->save();
+                $current_balance = $user_data?->wallet?->collected_cash ?? 0;
+                $account_transaction->from_type = 'deliveryman';
+                $account_transaction->from_id = $user_data->id;
+                $account_transaction->created_by = 'deliveryman';
+            }
+            else{
+                return 0;
+            }
+            $account_transaction->method = $data->payment_method;
+            $account_transaction->ref = $data->attribute;
+            $account_transaction->amount = $data->payment_amount;
+            $account_transaction->current_balance = $current_balance;
+
+            DB::beginTransaction();
+            $account_transaction->save();
+            $user_data?->wallet?->decrement('collected_cash', $account_transaction->amount);
+            AdminWallet::where('admin_id', Admin::where('role_id', 1)->first()->id)->increment('digital_received',  $account_transaction->amount );
+
+            DB::commit();
+
+
+        } catch (\Exception $exception) {
+            info($exception->getMessage());
+            DB::rollBack();
+
+        }
+
+
+        try {
+            if($data->attribute == 'deliveryman_collect_cash_payments' && config('mail.status') && Helpers::get_mail_status('cash_collect_mail_status_dm') == 1 ){
+                Mail::to($user_data['email'])->send(new \App\Mail\CollectCashMail($account_transaction,$user_data['f_name']));
+            }
+        } catch (\Exception $exception) {
+            info($exception->getMessage());
+        }
+        return true;
     }
 }
 
@@ -283,8 +336,20 @@ function order_place($data) {
     OrderLogic::update_unpaid_order_payment(order_id:$order->id, payment_method:$data->payment_method);
     try {
         Helpers::send_order_notification($order);
+        $address = json_decode($order->delivery_address, true);
+
+        $order_verification_mail_status = Helpers::get_mail_status('order_verification_mail_status_user');
+        if ( config('order_delivery_verification') == 1 && $order_verification_mail_status == '1' && $order->is_guest == 0) {
+            Mail::to($order->customer->email)->send(new OrderVerificationMail($order->otp,$order->customer->f_name));
+        }
+
+        if ($order->is_guest == 1 && config('mail.status') && $order_verification_mail_status == '1' && isset($address['contact_person_email'])) {
+            Mail::to($address['contact_person_email'])->send(new OrderVerificationMail($order->otp,$order->customer->f_name));
+        }
     } catch (\Exception $e) {
+        info($e);
     }
+
 }
 
 function order_failed($data) {

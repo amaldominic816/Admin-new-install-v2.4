@@ -75,7 +75,7 @@
             </div>
         </div>
 
-        <div class="col-md-4">
+        {{-- <div class="col-md-4">
             <div class="card min-height-260">
                 <div class="card-header">
                     <h3 class="h3 mb-0 text-capitalize">{{translate('messages.my_bank_info')}} </h3>
@@ -94,7 +94,28 @@
                     </div>
                 </div>
             </div>
+        </div> --}}
+
+
+        @if ($wr->method)
+        <div class="col-md-4">
+            <div class="card min-height-260px">
+                <div class="card-header">
+                    <h3 class="h3 mb-0 text-capitalize">{{ translate($wr->method->method_name) }} </h3>
+                    <i class="tio tio-dollar-outlined"></i>
+                </div>
+                <div class="card-body">
+                    <div class="col-md-8 mt-2">
+                    @forelse(json_decode($wr->withdrawal_method_fields, true) as $key=> $item)
+                    <h5 class="text-capitalize "> {{  translate($key) }}: {{$item}}</h5>
+                    @empty
+                    <h5 class="text-capitalize"> {{translate('messages.No_Data_found')}}</h5>
+                    @endforelse
+                    </div>
+                </div>
+            </div>
         </div>
+        @endif
         @if($wr->vendor && $wr->vendor->stores[0])
             <div class="col-md-4">
                 <div class="card min-height-260">
