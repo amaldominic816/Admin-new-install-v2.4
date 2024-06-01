@@ -35,7 +35,8 @@ class AccountTransactionController extends Controller
                     $q->orWhere('ref', 'like', "%{$value}%");
                 }
             });
-        })->latest()->paginate(config('default_pagination'));
+        })->where('type', 'collected' )
+            ->latest()->paginate(config('default_pagination'));
         return view('admin-views.account.index', compact('account_transaction'));
     }
 
@@ -181,14 +182,15 @@ class AccountTransactionController extends Controller
                     $q->orWhere('ref', 'like', "%{$value}%");
                 }
             });
-        })->latest()->get();
+        }) ->where('type', 'collected')
+            ->latest()->get();
 
         $data = [
             'account_transactions'=>$account_transaction,
             'search'=>$request->search??null,
 
         ];
-        
+
         if ($request->type == 'excel') {
             return Excel::download(new CollectCashTransactionExport($data), 'CollectCashTransactions.xlsx');
         } else if ($request->type == 'csv') {
@@ -202,7 +204,9 @@ class AccountTransactionController extends Controller
             foreach ($key as $value) {
                 $q->orWhere('ref', 'like', "%{$value}%");
             }
-        })->get();
+        })
+            ->where('type', 'collected' )
+            ->get();
 
         return response()->json([
             'view'=>view('admin-views.account.partials._table', compact('account_transaction'))->render(),

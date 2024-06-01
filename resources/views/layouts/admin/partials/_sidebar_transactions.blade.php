@@ -54,6 +54,30 @@
                 </li>
                 @endif
                 <!-- End withdraw -->
+                    @if (\App\CentralLogics\Helpers::module_permission_check('account'))
+                        <li
+                            class="navbar-vertical-aside-has-menu {{ Request::is('admin/transactions/store-disbursement*') ? 'active' : '' }}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link"
+                               href="{{ route('admin.transactions.store-disbursement.list', ['status' => 'all']) }}"
+                               title="{{ translate('messages.store_disbursement') }}">
+                                <i class="tio-wallet-outlined nav-icon"></i>
+                                <span
+                                    class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('messages.store_disbursement') }}</span>
+                            </a>
+                        </li>
+                    @endif
+                    @if (\App\CentralLogics\Helpers::module_permission_check('account'))
+                        <li
+                            class="navbar-vertical-aside-has-menu {{ Request::is('admin/transactions/dm-disbursement*') ? 'active' : '' }}">
+                            <a class="js-navbar-vertical-aside-menu-link nav-link"
+                               href="{{ route('admin.transactions.dm-disbursement.list', ['status' => 'all']) }}"
+                               title="{{ translate('messages.dm_disbursement') }}">
+                                <i class="tio-saving-outlined nav-icon"></i>
+                                <span
+                                    class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('messages.delivery_man_disbursement') }}</span>
+                            </a>
+                        </li>
+                    @endif
                 <!-- account -->
                 @if (\App\CentralLogics\Helpers::module_permission_check('collect_cash'))
                 <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/transactions/account-transaction*') ? 'active' : '' }}">
@@ -75,6 +99,19 @@
                 </li>
                 @endif
                 <!-- End provide_dm_earning -->
+
+                @if (\App\CentralLogics\Helpers::module_permission_check('settings'))
+                    <li
+                        class="navbar-vertical-aside-has-menu {{ Request::is('admin/transactions/withdraw-method*') ? 'active' : '' }}">
+                        <a class="js-navbar-vertical-aside-menu-link nav-link"
+                           href="{{ route('admin.transactions.withdraw-method.list') }}"
+                           title="{{ translate('messages.withdraw_method') }}">
+                            <i class="tio-savings nav-icon"></i>
+                            <span
+                                class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">{{ translate('messages.withdraw_method') }}</span>
+                        </a>
+                    </li>
+                @endif
 
                 <!-- Report -->
                 @if (\App\CentralLogics\Helpers::module_permission_check('report'))
@@ -108,6 +145,14 @@
                     <a class="nav-link " href="{{ route('admin.transactions.report.expense-report') }}" title="{{ translate('messages.expense_report') }}">
                         <span class="tio-money nav-icon"></span>
                         <span class="text-truncate">{{ translate('messages.expense_report') }}</span>
+                    </a>
+                </li>
+
+                <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/transactions/report/disbursement-report') ? 'active' : '' }}">
+                    <a class="nav-link " href="{{ route('admin.transactions.report.disbursement_report') }}"
+                       title="{{ translate('messages.disbursement_report') }}">
+                        <span class="tio-saving nav-icon"></span>
+                        <span class="text-truncate">{{ translate('messages.disbursement_report') }}</span>
                     </a>
                 </li>
 

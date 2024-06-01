@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Models\BusinessSetting;
 use App\Models\DeliveryMan;
 use App\Models\Order;
+use App\Models\ParcelDeliveryInstruction;
+use App\Models\Translation;
 use App\Scopes\ZoneScope;
 use Illuminate\Http\Request;
 use Brian2694\Toastr\Facades\Toastr;
@@ -141,7 +143,9 @@ class ParcelController extends Controller
 
     public function settings()
     {
-        return view('admin-views.parcel.settings');
+        $instructions = ParcelDeliveryInstruction::orderBy('id', 'desc')
+            ->paginate(config('default_pagination'));
+        return view('admin-views.parcel.settings', compact('instructions'));
     }
 
     public function update_settings(Request $request)
@@ -272,5 +276,108 @@ class ParcelController extends Controller
         $total = $orders->total();
 
         return view('admin-views.order.distaptch_list', compact('orders','module', 'status', 'orderstatus', 'scheduled', 'vendor_ids', 'zone_ids', 'from_date', 'to_date', 'total'));
+    }
+
+    public function instruction(Request $request)
+    {
+        $request->validate([
+            'instruction' => 'required|max:191',
+            'instruction.0' => 'required',
+        ],[
+            'instruction.0.required'=>translate('default_instruction_is_required'),
+        ]);
+
+        $instruction = new ParcelDeliveryInstruction();
+        $instruction->instruction = $request->instruction[array_search('default', $request->lang)];
+        $instruction->save();
+        $data = [];
+        $default_lang = str_replace('_', '-', app()->getLocale());
+        foreach ($request->lang as $index => $key) {
+            if($default_lang == $key && !($request->instruction[$index])){
+                if ($key != 'default') {
+                    array_push($data, array(
+                        'translationable_type' => 'App\Models\ParcelDeliveryInstruction',
+                        'translationable_id' => $instruction->id,
+                        'locale' => $key,
+                        'key' => 'instruction',
+                        'value' => $instruction->instruction,
+                    ));
+                }
+            }else{
+                if ($request->instruction[$index] && $key != 'default') {
+                    array_push($data, array(
+                        'translationable_type' => 'App\Models\ParcelDeliveryInstruction',
+                        'translationable_id' => $instruction->id,
+                        'locale' => $key,
+                        'key' => 'instruction',
+                        'value' => $request->instruction[$index],
+                    ));
+                }
+            }
+        }
+        Translation::insert($data);
+        Toastr::success(translate('Delivery Instruction Added Successfully'));
+        return back();
+    }
+    public function instruction_edit(Request $request)
+    {
+        $request->validate([
+            'instruction' => 'required|max:191',
+            'instruction.0' => 'required',
+        ],[
+            'instruction.0.required'=>translate('default_instruction_is_required'),
+        ]);
+        $instruction = ParcelDeliveryInstruction::findOrFail($request->instruction_id);
+        $instruction->instruction = $request->instruction[array_search('default', $request->lang1)];
+        $instruction->save();
+
+        $default_lang = str_replace('_', '-', app()->getLocale());
+        foreach ($request->lang1 as $index => $key) {
+            if($default_lang == $key && !($request->instruction[$index])){
+                if ($key != 'default') {
+                    Translation::updateOrInsert(
+                        [
+                            'translationable_type' => 'App\Models\ParcelDeliveryInstruction',
+                            'translationable_id' => $instruction->id,
+                            'locale' => $key,
+                            'key' => 'instruction'
+                        ],
+                        ['value' => $instruction->instruction]
+                    );
+                }
+            }else{
+                if ($request->instruction[$index] && $key != 'default') {
+                    Translation::updateOrInsert(
+                        [
+                            'translationable_type' => 'App\Models\ParcelDeliveryInstruction',
+                            'translationable_id' => $instruction->id,
+                            'locale' => $key,
+                            'key' => 'instruction'
+                        ],
+                        ['value' => $request->instruction[$index]]
+                    );
+                }
+            }
+        }
+
+
+        Toastr::success(translate('Delivery Instruction Updated Successfully'));
+        return back();
+    }
+    public function instruction_delete(Request $request)
+    {
+        $instruction = ParcelDeliveryInstruction::findOrFail($request->id);
+        $instruction?->translations()?->delete();
+        $instruction->delete();
+        Toastr::success(translate('Delivery Instruction Deleted Successfully'));
+        return back();
+    }
+    public function instruction_status(Request $request)
+    {
+        $instruction = ParcelDeliveryInstruction::findOrFail($request->id);
+        $instruction->status = $request->status;
+        $instruction->save();
+        Toastr::success(translate('messages.status_updated'));
+        return back();
     }
 }

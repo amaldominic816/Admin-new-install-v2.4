@@ -699,13 +699,14 @@ class Helpers
                 $item['avg_rating'] = $ratings['rating'];
                 $item['rating_count'] = $ratings['total'];
                 $item['positive_rating'] = $ratings['positive_rating'];
-                $item['total_items'] = $item['items']->count();
-                $item['total_campaigns'] = $item['campaigns']->count();
+                $item['total_items'] = $item['items_count'];
+                $item['total_campaigns'] = $item['campaigns_count'];
                 $item['is_recommended'] = false;
                 if($item->Store_config && $item->Store_config->is_recommended_deleted == 0 ){
                     $item['is_recommended'] = $item->Store_config->is_recommended;
                 }
-                $item['total_campaigns'] = $item['campaigns']->count();
+                unset($item['items_count']);
+                unset($item['campaigns_count']);
                 unset($item['Store_config']);
                 unset($item['campaigns']);
                 unset($item['pivot']);
@@ -723,8 +724,10 @@ class Helpers
             $data['avg_rating'] = $ratings['rating'];
             $data['rating_count'] = $ratings['total'];
             $data['positive_rating'] = $ratings['positive_rating'];
-            $data['total_items'] = $data['items']->count();
-            $data['total_campaigns'] = $data['campaigns']->count();
+            $data['total_items'] = $data['items_count'];
+            $data['total_campaigns'] = $data['campaigns_count'];
+            unset($data['items_count']);
+            unset($data['campaigns_count']);
             unset($data['campaigns']);
             unset($data['Store_config']);
             unset($data['pivot']);
@@ -3406,5 +3409,18 @@ class Helpers
             return $result;
         }
 
+    public static function time_date_format($data){
+        $time=config('timeformat') ?? 'H:i';
+        return  Carbon::parse($data)->locale(app()->getLocale())->translatedFormat('d M Y ' . $time);
     }
+    public static function date_format($data){
+        return  Carbon::parse($data)->locale(app()->getLocale())->translatedFormat('d M Y');
+    }
+    public static function time_format($data){
+        $time=config('timeformat') ?? 'H:i';
+        return  Carbon::parse($data)->locale(app()->getLocale())->translatedFormat($time);
+    }
+
+    }
+
 

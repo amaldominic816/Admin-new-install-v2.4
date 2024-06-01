@@ -24,7 +24,7 @@ class SystemController extends Controller
         return response()->json([
             'success' => 1,
 
-            'data' => ['new_order' => $new_order_count > 0 ? $new_order_count : $new_parcel_order, 'type' => $new_order_count > 0 ? 'store_order' : 'parcel', 'module_id' => $new_order_count > 0 ? $new_order?->module_id : $new_parcel_order?->module_id]
+            'data' => ['new_order' => $new_order_count > 0 ? $new_order_count : $new_parcel_order_count, 'type' => $new_order_count > 0 ? 'store_order' : 'parcel', 'module_id' => $new_order_count > 0 ? $new_order?->module_id : $new_parcel_order?->module_id]
         ]);
     }
 

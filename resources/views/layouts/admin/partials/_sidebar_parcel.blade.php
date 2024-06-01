@@ -318,10 +318,10 @@
 
                     @if (\App\CentralLogics\Helpers::module_permission_check('parcel'))
                     <li class="navbar-vertical-aside-has-menu {{ Request::is('admin/parcel/settings') ? 'active' : '' }}">
-                        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.parcel.settings') }}" title="{{ translate('messages.delivery_fee_setup') }}">
-                            <i class="tio-money nav-icon"></i>
+                        <a class="js-navbar-vertical-aside-menu-link nav-link" href="{{ route('admin.parcel.settings') }}" title="{{ translate('messages.delivery_setup') }}">
+                            <i class="tio-settings nav-icon"></i>
                             <span class="navbar-vertical-aside-mini-mode-hidden-elements text-truncate">
-                                {{ translate('messages.delivery_fee_setup') }}
+                                {{ translate('messages.delivery_setup') }}
                             </span>
                         </a>
                     </li>

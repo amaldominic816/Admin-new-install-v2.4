@@ -153,11 +153,14 @@ class ZoneController extends Controller
     {
 
         $request->validate([
-            'cash_on_delivery' => 'required_without:digital_payment',
-            'digital_payment' => 'required_without:cash_on_delivery',
+            'cash_on_delivery' => 'required_without_all:digital_payment,offline_payment',
+            'digital_payment' => 'required_without_all:cash_on_delivery,offline_payment',
+            'offline_payment' => 'required_without_all:cash_on_delivery,digital_payment',
             'increased_delivery_fee' => 'nullable|numeric|between:0,999.99|required_if:increased_delivery_fee_status,1',
+            'module_data' => 'required'
         ], [
-            'increased_delivery_fee.required_if' => translate('messages.increased_delivery_fee_is_required')
+            'increased_delivery_fee.required_if' => translate('messages.increased_delivery_fee_is_required'),
+            'module_data.required' => translate('messages.business_module_data_is_required'),
         ]);
 
         foreach($request->module_data as $data){
@@ -174,7 +177,7 @@ class ZoneController extends Controller
         $zone->increased_delivery_fee = $request->increased_delivery_fee ?? 0;
         $zone->increased_delivery_fee_status = $request->increased_delivery_fee_status ?? 0;
         $zone->increase_delivery_charge_message = $request->increase_delivery_charge_message ?? null;
-        
+
         $zone->modules()->sync($request->module_data);
         $zone->save();
         Toastr::success(translate('messages.zone_module_updated_successfully'));

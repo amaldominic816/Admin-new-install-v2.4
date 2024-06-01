@@ -10,7 +10,6 @@ use App\Models\StoreSchedule;
 
 use App\Models\OrderTransaction;
 use Illuminate\Support\Facades\DB;
-use function Symfony\Component\VarDumper\Dumper\esc;
 
 class StoreLogic
 {
@@ -18,8 +17,8 @@ class StoreLogic
     {
         $paginator = Store::
         withOpen($longitude??0,$latitude??0)
-        ->
-        with(['discount'=>function($q){
+        ->withCount(['items','campaigns'])
+        ->with(['discount'=>function($q){
             return $q->validate();
         }])
         ->whereHas('module',function($query){
@@ -90,6 +89,7 @@ class StoreLogic
             $store->category_ids = $category_ids;
 
             $store->discount_status = !empty($store->items->where('discount', '>', 0));
+            unset($store['items']);
         });
 
         /*$paginator->total();*/
@@ -104,6 +104,7 @@ class StoreLogic
     public static function get_latest_stores($zone_id, $limit = 50, $offset = 1, $type='all',$longitude=0,$latitude=0)
     {
         $paginator = Store::withOpen($longitude??0,$latitude??0)
+        ->withCount(['items','campaigns'])
         ->with(['discount'=>function($q){
             return $q->validate();
         }])
@@ -131,6 +132,7 @@ class StoreLogic
     public static function get_popular_stores($zone_id, $limit = 50, $offset = 1, $type = 'all',$longitude=0,$latitude=0)
     {
         $paginator = Store::withOpen($longitude??0,$latitude??0)
+        ->withCount(['items','campaigns'])
         ->with(['discount'=>function($q){
             return $q->validate();
         }])
@@ -161,6 +163,7 @@ class StoreLogic
     public static function get_discounted_stores($zone_id, $limit = 50, $offset = 1, $type = 'all',$longitude=0,$latitude=0)
     {
         $paginator = Store::withOpen($longitude??0,$latitude??0)
+        ->withCount(['items','campaigns'])
         ->with(['discount'=>function($q){
             return $q->validate();
         }])
@@ -211,6 +214,7 @@ class StoreLogic
             $store->category_ids = $category_ids;
 
             $store->discount_status = !empty($store->items->where('discount', '>', 0));
+            unset($store['items']);
         });
 
         return [
@@ -223,7 +227,8 @@ class StoreLogic
 
     public static function get_top_rated_stores($zone_id, $limit = 50, $offset = 1, $type = 'all',$longitude=0,$latitude=0)
     {
-        $paginator = Store::whereNotNull('rating')->withOpen($longitude??0,$latitude??0)
+        $paginator = Store::withOpen($longitude??0,$latitude??0)->whereNotNull('rating')
+        ->withCount(['items','campaigns'])
         ->with(['discount'=>function($q){
             return $q->validate();
         }])
@@ -250,9 +255,10 @@ class StoreLogic
 
     public static function get_store_details($store_id,$longitude=0,$latitude=0)
     {
-        return Store::with(['discount'=>function($q){
+        return Store::withOpen($longitude??0,$latitude??0)->with(['discount'=>function($q){
             return $q->validate();
-        }, 'campaigns', 'schedules','activeCoupons'])->withOpen($longitude??0,$latitude??0)
+        }, 'campaigns', 'schedules','activeCoupons'])
+        ->withCount(['items','campaigns'])
         ->when(config('module.current_module_data'), function($query){
             $query->module(config('module.current_module_data')['id']);
         })
@@ -296,9 +302,9 @@ class StoreLogic
     public static function search_stores($name, $zone_id, $category_id= null,$limit = 10, $offset = 1, $type = 'all',$longitude=0,$latitude=0)
     {
         $key = explode(' ', $name);
-        $paginator = Store::whereHas('zone.modules', function($query){
+        $paginator = Store::withOpen($longitude??0,$latitude??0)->whereHas('zone.modules', function($query){
             $query->where('modules.id', config('module.current_module_data')['id']);
-        })->withOpen($longitude??0,$latitude??0)->with(['discount'=>function($q){
+        })->withCount(['items','campaigns'])->with(['discount'=>function($q){
             return $q->validate();
         }])->weekday()->where(function ($q) use ($key) {
             foreach ($key as $value) {
@@ -348,6 +354,7 @@ class StoreLogic
 
             $store->category_ids = $category_ids;
             $store->discount_status = !empty($store->items->where('discount', '>', 0));
+            unset($store['items']);
         });
 
         return [
@@ -526,6 +533,7 @@ class StoreLogic
                 $shuffle= DataSetting::where(['key' => 'shuffle_recommended_store' , 'type' => config('module.current_module_data')['id']])?->first()?->value;
             }
             $paginator = Store::withOpen($longitude??0,$latitude??0)
+            ->withCount(['items','campaigns'])
             ->wherehas('Store_config', function ($q){
                 $q->where(['is_recommended_deleted'=> 0 , 'is_recommended' => 1]);
             })

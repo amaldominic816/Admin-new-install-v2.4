@@ -61,7 +61,7 @@
                 <!-- Collected Cash Card Example -->
                 <div class="col-sm-6">
                     <div class="resturant-card card--bg-4">
-                        <h4 class="title">{{\App\CentralLogics\Helpers::format_currency($wallet->balance)}}</h4>
+                        <h4 class="title">{{\App\CentralLogics\Helpers::format_currency($wallet->balance>0?$wallet->balance:0)}}</h4>
                         <div class="subtitle">{{translate('messages.withdraw_able_balance')}}</div>
                         <img class="resturant-icon w--30" src="{{asset('public/assets/admin/img/transactions/withdraw-balance.png')}}" alt="transaction">
                     </div>

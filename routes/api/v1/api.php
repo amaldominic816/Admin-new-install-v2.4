@@ -89,6 +89,25 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
             //Remove account
             Route::delete('remove-account', 'DeliverymanController@remove_account');
 
+
+
+            Route::get('get-withdraw-method-list', 'DeliverymanController@withdraw_method_list');
+            Route::get('get-disbursement-report', 'DeliverymanController@disbursement_report');
+
+            Route::group(['prefix' => 'withdraw-method'], function () {
+                Route::get('list', 'DeliverymanController@get_disbursement_withdrawal_methods');
+                Route::post('store', 'DeliverymanController@disbursement_withdrawal_method_store');
+                Route::post('make-default', 'DeliverymanController@disbursement_withdrawal_method_default');
+                Route::delete('delete', 'DeliverymanController@disbursement_withdrawal_method_delete');
+            });
+
+
+            Route::post('make-collected-cash-payment', 'DeliverymanController@make_payment')->name('make_payment');
+            Route::post('make-wallet-adjustment', 'DeliverymanController@make_wallet_adjustment')->name('make_wallet_adjustment');
+            Route::get('wallet-payment-list', 'DeliverymanController@wallet_payment_list')->name('wallet_payment_list');
+            Route::get('wallet-provided-earning-list', 'DeliverymanController@wallet_provided_earning_list')->name('wallet_provided_earning_list');
+
+
             // Chatting
             Route::group(['prefix' => 'message'], function () {
                 Route::get('list', 'ConversationController@dm_conversations');
@@ -96,7 +115,10 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
                 Route::get('details', 'ConversationController@dm_messages');
                 Route::post('send', 'ConversationController@dm_messages_store');
             });
+
+
         });
+
     });
 
     Route::group(['prefix' => 'vendor', 'namespace' => 'Vendor', 'middleware'=>['vendor.api']], function () {
@@ -122,8 +144,26 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
         Route::get('get-items-list', 'VendorController@get_items');
         Route::put('update-bank-info', 'VendorController@update_bank_info');
         Route::post('request-withdraw', 'VendorController@request_withdraw');
-        Route::get('get-expense', 'ReportController@expense_report');
+
         Route::put('send-order-otp', 'VendorController@send_order_otp');
+
+        Route::post('make-collected-cash-payment', 'VendorController@make_payment')->name('make_payment');
+        Route::post('make-wallet-adjustment', 'VendorController@make_wallet_adjustment')->name('make_wallet_adjustment');
+        Route::get('wallet-payment-list', 'VendorController@wallet_payment_list')->name('wallet_payment_list');
+
+
+        Route::get('get-withdraw-method-list', 'WithdrawMethodController@withdraw_method_list');
+
+        Route::group(['prefix' => 'withdraw-method'], function () {
+            Route::get('list', 'WithdrawMethodController@get_disbursement_withdrawal_methods');
+            Route::post('store', 'WithdrawMethodController@disbursement_withdrawal_method_store');
+            Route::post('make-default', 'WithdrawMethodController@disbursement_withdrawal_method_default');
+            Route::delete('delete', 'WithdrawMethodController@disbursement_withdrawal_method_delete');
+        });
+
+        Route::get('get-expense', 'ReportController@expense_report');
+        Route::get('get-disbursement-report', 'ReportController@disbursement_report');
+
 
         //remove account
         Route::delete('remove-account', 'VendorController@remove_account');
@@ -228,6 +268,7 @@ Route::group(['namespace' => 'Api\V1', 'middleware'=>'localization'], function (
     });
 
     Route::get('customer/order/cancellation-reasons', 'OrderController@cancellation_reason');
+    Route::get('customer/order/parcel-instructions', 'OrderController@parcel_instructions');
     Route::get('most-tips', 'OrderController@most_tips');
     Route::get('stores/details/{id}', 'StoreController@get_details');
 

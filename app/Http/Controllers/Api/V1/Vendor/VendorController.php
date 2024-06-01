@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers\Api\V1\Vendor;
 
+use App\Models\AccountTransaction;
 use App\Models\Item;
 use App\Models\Order;
 use App\Models\Store;
 use App\Models\Coupon;
+use App\Models\StoreWallet;
 use App\Models\Vendor;
 use App\Models\Campaign;
 use App\Models\Notification;
+use App\Models\WithdrawalMethod;
 use Illuminate\Http\Request;
 use App\CentralLogics\Helpers;
 use App\Models\VendorEmployee;
@@ -26,12 +29,17 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
+use App\Library\Payment as PaymentInfo;
+use App\Library\Receiver;
+use App\Traits\Payment;
+use App\Library\Payer;
 
 class VendorController extends Controller
 {
     public function get_profile(Request $request)
     {
         $vendor = $request['vendor'];
+        $min_amount_to_pay_store = BusinessSetting::where('key' , 'min_amount_to_pay_store')->first()->value ?? 0;
         $store = Helpers::store_data_formatting($vendor->stores[0], false);
         $discount=Helpers::get_store_discount($vendor->stores[0]);
         unset($store['discount']);
@@ -50,6 +58,67 @@ class VendorController extends Controller
         $vendor['todays_earning'] =(float)$vendor->todays_earning()->sum('store_amount');
         $vendor['this_week_earning'] =(float)$vendor->this_week_earning()->sum('store_amount');
         $vendor['this_month_earning'] =(float)$vendor->this_month_earning()->sum('store_amount');
+
+            if($vendor['balance']  < 0){
+                $vendor['balance']  = 0 ;
+            }
+
+        $vendor['Payable_Balance'] =(float) ($vendor?->wallet?->balance  < 0 ? abs($vendor?->wallet?->balance): 0 );
+
+        $wallet_earning =  $vendor?->wallet?->total_earning -($vendor?->wallet?->total_withdrawn + $vendor?->wallet?->pending_withdraw);
+        $vendor['withdraw_able_balance'] =(float) $wallet_earning ;
+
+        if(($vendor?->wallet?->balance > 0 && $vendor?->wallet?->collected_cash > 0 ) || ($vendor?->wallet?->collected_cash != 0 && $wallet_earning !=  0)){
+            $vendor['adjust_able'] = true;
+        }
+        elseif($vendor?->wallet?->balance ==  $wallet_earning  ){
+            $vendor['adjust_able'] = false;
+        }
+        else{
+            $vendor['adjust_able'] = false;
+        }
+
+        $vendor['show_pay_now_button'] = false;
+
+        if ($min_amount_to_pay_store <= $vendor?->wallet?->collected_cash){
+            $vendor['show_pay_now_button'] = true;
+        }
+
+        $vendor['pending_withdraw'] =(float)$vendor?->wallet?->pending_withdraw ?? 0;
+        $vendor['total_withdrawn'] = (float)$vendor?->wallet?->total_withdrawn ?? 0;
+
+        if($vendor['balance'] > 0 ){
+            $vendor['dynamic_balance'] =  (float) abs($wallet_earning);
+                if($vendor?->wallet?->balance ==  $wallet_earning){
+                    $vendor['dynamic_balance_type']  = translate('messages.Withdrawable_Balance') ;
+                } else{
+                    $vendor['dynamic_balance_type']  = translate('messages.Balance').' '.(translate('Unadjusted')) ;
+                }
+
+        } else{
+            $vendor['dynamic_balance']   =  (float) abs($vendor?->wallet?->collected_cash) ?? 0;
+            $vendor['dynamic_balance_type']  = translate('messages.Payable_Balance') ;
+        }
+
+        $Payable_Balance = $vendor?->wallet?->balance  < 0 ? 1: 0;
+
+        $cash_in_hand_overflow=  BusinessSetting::where('key' ,'cash_in_hand_overflow_store')->first()?->value;
+        $cash_in_hand_overflow_store_amount =  BusinessSetting::where('key' ,'cash_in_hand_overflow_store_amount')->first()?->value;
+        $val=  $cash_in_hand_overflow_store_amount - (($cash_in_hand_overflow_store_amount * 10)/100);
+
+        $vendor['over_flow_warning'] = false;
+        if($Payable_Balance == 1 &&  $cash_in_hand_overflow &&  $vendor?->wallet?->balance < 0 &&  $val <=  abs($vendor?->wallet?->balance)  &&  $cash_in_hand_overflow_store_amount >= abs($vendor?->wallet?->balance)){
+
+            $vendor['over_flow_warning'] = true;
+        }
+
+        $vendor['over_flow_block_warning'] = false;
+        if ($Payable_Balance == 1 &&  $cash_in_hand_overflow &&  $vendor?->wallet?->balance < 0 &&  $cash_in_hand_overflow_store_amount < abs($vendor?->wallet?->balance)){
+            $vendor['over_flow_block_warning'] = true;
+        }
+
+
+
         $vendor["stores"] = $store;
         $st = Store::withoutGlobalScope('translate')->findOrFail($store['id']);
         $vendor["translations"] = $st->translations;
@@ -157,7 +226,7 @@ class VendorController extends Controller
         })
         ->Notpos()
         ->NotDigitalOrder()
-        ->OfflinePrndingOrder()
+
         ->orderBy('schedule_at', 'desc')
         ->get();
         $orders= Helpers::order_data_formatting($orders, true);
@@ -451,7 +520,7 @@ class VendorController extends Controller
         ->with('customer')
         ->Notpos()
         ->NotDigitalOrder()
-        ->OfflinePrndingOrder()
+
         ->orderBy('schedule_at', 'desc')
         ->get();
         $orders= Helpers::order_data_formatting($orders, true);
@@ -653,7 +722,16 @@ class VendorController extends Controller
         {
             $item['status'] = $status[$item->approved];
             $item['requested_at'] = $item->created_at->format('Y-m-d H:i:s');
-            $item['bank_name'] = $request['vendor']->bank_name;
+
+        if($item->type == 'disbursement'){
+
+            $item['bank_name'] = $item->disbursementMethod ? $item->disbursementMethod->method_name : translate('Account');
+        } else {
+            $item['bank_name'] = $item->method ? $item->method->method_name : translate('Account');
+
+        }
+            $item['detail']=json_decode($item->withdrawal_method_fields,true);
+
             unset($item['created_at']);
             unset($item['approved']);
             $temp[] = $item;
@@ -665,18 +743,32 @@ class VendorController extends Controller
     public function request_withdraw(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'amount' => 'required|numeric|min:0.01'
+            'amount' => 'required|numeric|min:0.01',
+            'id'=> 'required'
         ]);
         if ($validator->fails()) {
             return response()->json(['errors' => Helpers::error_processor($validator)], 403);
         }
 
-        $w = $request['vendor']->wallet;
-        if ($w->balance >= $request['amount']) {
+        $method = WithdrawalMethod::find($request['id']);
+        $fields = array_column($method->method_fields, 'input_name');
+        $values = $request->all();
+
+        $method_data = [];
+        foreach ($fields as $field) {
+            if(key_exists($field, $values)) {
+                $method_data[$field] = $values[$field];
+            }
+        }
+
+        $w = $request['vendor']?->wallet;
+        if ($w?->balance >= $request['amount']) {
             $data = [
-                'vendor_id' => $w->vendor_id,
+                'vendor_id' => $w?->vendor_id,
                 'amount' => $request['amount'],
                 'transaction_note' => null,
+                'withdrawal_method_id' => $request['id'],
+                'withdrawal_method_fields' => json_encode($method_data),
                 'approved' => 0,
                 'created_at' => now(),
                 'updated_at' => now()
@@ -684,16 +776,18 @@ class VendorController extends Controller
             try
             {
                 DB::table('withdraw_requests')->insert($data);
-                $w->increment('pending_withdraw', $request['amount']);
+                $w?->increment('pending_withdraw', $request['amount']);
                 $mail_status = Helpers::get_mail_status('withdraw_request_mail_status_admin');
                 if(config('mail.status') && $mail_status == '1') {
                     $wallet_transaction = WithdrawRequest::where('vendor_id',$w->vendor_id)->latest()->first();
-                    Mail::to($wallet_transaction->vendor->email)->send(new \App\Mail\WithdrawRequestMail('pending',$wallet_transaction));
+                    $admin= \App\Models\Admin::where('role_id', 1)->first();
+                    Mail::to($admin->email)->send(new \App\Mail\WithdrawRequestMail('admin_mail',$wallet_transaction));
                 }
                 return response()->json(['message'=>translate('messages.withdraw_request_placed_successfully')],200);
             }
             catch(\Exception $e)
             {
+                info($e->getMessage());
                 return response()->json($e);
             }
         }
@@ -924,7 +1018,7 @@ class VendorController extends Controller
         })
         ->Notpos()
         ->NotDigitalOrder()
-        ->OfflinePrndingOrder()
+
         ->first();
         if(!$order)
         {
@@ -937,7 +1031,7 @@ class VendorController extends Controller
         $value = translate('your_order_is_ready_to_be_delivered,_plesae_share_your_otp_with_delivery_man.').' '.translate('otp:').$order->otp.', '.translate('order_id:').$order->id;
         try {
 
-            $fcm_token= $order?->guest?->fcm_token ?? $order?->customer?->cm_firebase_token;
+            $fcm_token= $order->is_guest == 0 ? $order?->customer?->cm_firebase_token : $order?->guest?->fcm_token;
 
             if ($value && $fcm_token) {
                 $data = [
@@ -981,4 +1075,153 @@ class VendorController extends Controller
         return response()->json(['message' => translate('messages.profile_updated_successfully')], 200);
     }
 
+
+    Public function make_payment(Request $request){
+        $validator = Validator::make($request->all(), [
+            'payment_gateway' => 'required',
+            'amount' => 'required|numeric|min:.001',
+            'callback' => 'required'
+        ]);
+
+        $vendor = $request['vendor'];
+        $store=  $vendor->stores[0];
+
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => Helpers::error_processor($validator)], 403);
+        }
+
+        $store =Store::findOrfail($store->id);
+
+        $payer = new Payer(
+            $store->name ,
+            $store->email,
+            $store->phone,
+            ''
+        );
+        $additional_data = [
+            'business_name' => BusinessSetting::where(['key'=>'business_name'])->first()?->value,
+            'business_logo' => asset('storage/app/public/business') . '/' .BusinessSetting::where(['key' => 'logo'])->first()?->value
+        ];
+        $payment_info = new PaymentInfo(
+            success_hook: 'collect_cash_success',
+            failure_hook: 'collect_cash_fail',
+            currency_code: Helpers::currency_code(),
+            payment_method: $request->payment_gateway,
+            payment_platform: 'app',
+            payer_id: $store->vendor_id,
+            receiver_id: '100',
+            additional_data:  $additional_data,
+            payment_amount: $request->amount ,
+            external_redirect_link: $request->has('callback')?$request['callback']:session('callback'),
+            attribute: 'store_collect_cash_payments',
+            attribute_id: $store->vendor_id,
+        );
+
+        $receiver_info = new Receiver('Admin','example.png');
+        $redirect_link = Payment::generate_link($payer, $payment_info, $receiver_info);
+
+        $data = [
+            'redirect_link' => $redirect_link,
+        ];
+        return response()->json($data, 200);
+
+    }
+
+
+    public function make_wallet_adjustment(Request $request){
+        $vendor = $request['vendor'];
+
+        $wallet = StoreWallet::firstOrNew(
+            ['vendor_id' =>$vendor->id]
+        );
+
+        $wallet_earning =  $wallet->total_earning -($wallet->total_withdrawn + $wallet->pending_withdraw);
+        $adj_amount =  $wallet->collected_cash - $wallet_earning;
+
+
+        if($wallet->collected_cash == 0 || $wallet_earning == 0  || ($wallet_earning  == $wallet->balance ) ){
+            return response()->json(['message' => translate('messages.Already_Adjusted')], 201);
+        }
+
+        if($adj_amount > 0 ){
+            $wallet->total_withdrawn =  $wallet->total_withdrawn + $wallet_earning ;
+            $wallet->collected_cash =   $wallet->collected_cash - $wallet_earning ;
+
+            $data = [
+                'vendor_id' => $vendor->id,
+                'amount' => $wallet_earning,
+                'transaction_note' => "Store_wallet_adjustment_partial",
+                'withdrawal_method_id' => null,
+                'withdrawal_method_fields' => null,
+                'approved' => 1,
+                'type' => 'adjustment',
+                'created_at' => now(),
+                'updated_at' => now()
+            ];
+
+        } else{
+            $data = [
+                'vendor_id' => $vendor->id,
+                'amount' => $wallet->collected_cash ,
+                'transaction_note' => "Store_wallet_adjustment_full",
+                'withdrawal_method_id' => null,
+                'withdrawal_method_fields' => null,
+                'approved' => 1,
+                'type' => 'adjustment',
+                'created_at' => now(),
+                'updated_at' => now()
+            ];
+            $wallet->total_withdrawn =  $wallet->total_withdrawn + $wallet->collected_cash ;
+            $wallet->collected_cash =   0;
+
+        }
+
+        $wallet->save();
+        DB::table('withdraw_requests')->insert($data);
+
+        return response()->json(['message' => translate('messages.store_wallet_adjustment_successfull')], 200);
+    }
+
+    public function wallet_payment_list(Request $request)
+    {
+        $limit= $request['limit'] ?? 25;
+        $offset = $request['offset'] ?? 1;
+        $vendor = $request['vendor'];
+
+        $key = isset($request['search']) ? explode(' ', $request['search']) : [];
+        $paginator = AccountTransaction::
+        when(isset($key), function ($query) use ($key) {
+            return $query->where(function ($q) use ($key) {
+                foreach ($key as $value) {
+                    $q->orWhere('ref', 'like', "%{$value}%");
+                }
+            });
+        })
+            ->where('type', 'collected')
+            ->where('created_by' , 'store')
+            ->where('from_id', $vendor->id)
+            ->where('from_type', 'store')
+            ->latest()
+
+            ->paginate($limit, ['*'], 'page', $offset);
+
+        $temp= [];
+
+        foreach( $paginator->items() as $item)
+        {
+            $item['status'] = 'approved';
+            $item['payment_time'] = \App\CentralLogics\Helpers::time_date_format($item->created_at);
+
+            $temp[] = $item;
+        }
+        $data = [
+            'total_size' => $paginator->total(),
+            'limit' => $limit,
+            'offset' => $offset,
+            'transactions' => $temp,
+        ];
+
+        return response()->json($data, 200);
+    }
 }

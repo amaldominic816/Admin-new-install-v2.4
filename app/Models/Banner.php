@@ -12,6 +12,10 @@ class Banner extends Model
     use HasFactory;
     protected $casts = [
         'data' => 'integer',
+        'status' => 'boolean',
+        'zone_id' => 'integer',
+        'module_id' => 'integer',
+        'featured' => 'boolean',
     ];
 
     public function translations()
@@ -40,7 +44,7 @@ class Banner extends Model
     {
         return $this->belongsTo(Module::class);
     }
-    
+
     public function scopeModule($query, $module_id)
     {
         return $query->where('module_id', $module_id);

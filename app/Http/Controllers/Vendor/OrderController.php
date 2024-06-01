@@ -96,7 +96,7 @@ class OrderController extends Controller
                 }
             });
         })
-        ->StoreOrder()->NotDigitalOrder()->OfflinePrndingOrder()
+        ->StoreOrder()->NotDigitalOrder()
         ->where('store_id',\App\CentralLogics\Helpers::get_store_id())
         ->orderBy('schedule_at', 'desc')
         ->paginate(config('default_pagination'));
@@ -179,7 +179,7 @@ class OrderController extends Controller
                 }
             });
         })
-        ->StoreOrder()->NotDigitalOrder()->OfflinePrndingOrder()
+        ->StoreOrder()->NotDigitalOrder()
         ->where('store_id',\App\CentralLogics\Helpers::get_store_id())
         ->orderBy('schedule_at', 'desc')
         ->get();
@@ -212,7 +212,7 @@ class OrderController extends Controller
                     ->orWhere('order_status', 'like', "%{$value}%")
                     ->orWhere('transaction_reference', 'like', "%{$value}%");
             }
-        })->StoreOrder()->NotDigitalOrder()->OfflinePrndingOrder()->limit(100)->get();
+        })->StoreOrder()->NotDigitalOrder()->limit(100)->get();
         return response()->json([
             'view'=>view('vendor-views.order.partials._table',compact('orders'))->render()
         ]);

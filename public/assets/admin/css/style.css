@@ -10986,3 +10986,184 @@ flex-grow: 1 !important;
     word-break: break-all !important;
     word-wrap: break-word !important;
 } */
+
+/* Disburstment CSS */
+.disbursement-report {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+@media screen and (max-width: 767px) {
+    .disbursement-report {
+        justify-content: space-evenly;
+    }
+}
+.disbursement-report .rebursement-item {
+    width: calc(33% - 12px);
+    border-radius: 5px;
+    background: #FFF;
+    box-shadow: 6px 6px 12px -3px rgba(51, 66, 87, 0.05);
+}
+.disbursement-report .rebursement-item .icon {
+    width: 65px;
+    height: 65px;
+}
+.disbursement-report .rebursement-item .subtitle {
+    font-weight: 400;
+}
+@media screen and (max-width: 767px) {
+    .disbursement-report .rebursement-item {
+        width: calc(50% - 8px);
+        border: 1px solid #f0f0f0;
+    }
+    .disbursement-report .rebursement-item .icon {
+        width: 50px;
+        height: 50px;
+    }
+}
+@media screen and (max-width: 424px) {
+    .disbursement-report .rebursement-item {
+        width: 100%;
+    }
+}
+
+@media screen and (min-width: 1200px) {
+    .btn-xl-inline-block {
+        width: 120px;
+    }
+}
+
+.form-check-input {
+    cursor: pointer;
+}
+
+.mb-14 {
+    margin-bottom: 24px;
+}
+
+.payment-modal-close {
+    position: absolute;
+    right: 5px;
+    top: 5px;
+    padding: 10px;
+    cursor: pointer;
+}
+.payment-modal-close i::before {
+    font-size: 30px;
+}
+
+.mx-450 {
+    max-width: 450px;
+}
+
+.mx-260 {
+    max-width: 260px;
+}
+
+@media screen and (min-width: 576px) and (max-width: 992px) {
+    .modal-dialog {
+        max-width: 720px;
+    }
+}
+.payment-info-modal-info {
+    row-gap: 40px;
+    -moz-column-gap: 24px;
+    column-gap: 24px;
+}
+.payment-info-modal-info .item {
+    width: 280px;
+    flex-grow: 1;
+}
+.payment-info-modal-info .item h5 {
+    font-size: 18px;
+}
+.payment-info-modal-info .item .item-list {
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    row-gap: 6px;
+}
+.payment-info-modal-info .item .item-list li {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    max-width: 360px;
+}
+.payment-info-modal-info .item .item-list li strong {
+    margin-left: auto;
+    color: var(--title-clr);
+    font-weight: 600;
+    padding-left: 10px;
+}
+@media screen and (min-width: 576px) {
+    .payment-info-modal-info .item .item-list li strong {
+        width: 120px;
+    }
+}
+@media screen and (min-width: 1200px) {
+    .payment-info-modal-info .item .item-list li strong {
+        width: 215px;
+    }
+}
+.payment-info-modal-info .item .item-list li .name {
+    padding-right: 10px;
+}
+@media screen and (min-width: 576px) {
+    .payment-info-modal-info .item .item-list li .name {
+        width: 130px;
+    }
+}
+@media screen and (min-width: 576px) {
+    .payment-info-modal-info .item.w-100 .item-list li {
+        width: 50%;
+    }
+    .payment-info-modal-info .item.w-100 .item-list li:nth-child(even) {
+        margin-inline: auto;
+    }
+}
+.btn.text-title {
+    color: var(--title-clr) !important;
+}/*# sourceMappingURL=style.css.map */
+
+.__alert-2 {
+    border-radius: 4px;
+    background: #FFF1F1 !important;
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+    white-space: initial;
+    word-wrap: break-word;
+    position: fixed;
+    top: 4px;
+    left: 292px;
+    width: calc(100vw - 518px);
+    z-index: 99;
+}
+
+
+@media screen and (max-width: 991px) {
+
+    .__alert-2  {
+        left: 10vw;
+        width: 80vw;
+        bottom: 20px;
+        top: unset;
+    }
+}
+.__alert-2 .cont {
+    width: 0;
+    flex-grow: 1;
+    font-size: 12px;
+}
+.input--group .copy-btn {
+    position: absolute;
+    height: calc(100% - 10px)
+;
+    padding-block: 0;
+    font-size: 12px;
+    top: 5px;
+    right: 5px;
+    z-index: 1;
+}
+

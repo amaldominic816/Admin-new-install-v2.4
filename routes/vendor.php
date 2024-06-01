@@ -156,8 +156,22 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('/', 'WalletController@index')->name('index');
             Route::post('request', 'WalletController@w_request')->name('withdraw-request');
             Route::delete('close/{id}', 'WalletController@close_request')->name('close-request');
+            Route::get('method-list', 'WalletController@method_list')->name('method-list');
+            Route::post('make-collected-cash-payment', 'WalletController@make_payment')->name('make_payment');
+            Route::post('make-wallet-adjustment', 'WalletController@make_wallet_adjustment')->name('make_wallet_adjustment');
+
+            Route::get('wallet-payment-list', 'WalletController@wallet_payment_list')->name('wallet_payment_list');
+            Route::get('disbursement-list', 'WalletController@getDisbursementList')->name('getDisbursementList');
+            Route::get('export', 'WalletController@getDisbursementExport')->name('export');
+
         });
 
+        Route::group(['prefix' => 'withdraw-method', 'as' => 'wallet-method.', 'middleware' => ['module:wallet']], function () {
+            Route::get('/', 'WalletMethodController@index')->name('index');
+            Route::post('store/', 'WalletMethodController@store')->name('store');
+            Route::get('default/{id}/{default}', 'WalletMethodController@default')->name('default');
+            Route::delete('delete/{id}', 'WalletMethodController@delete')->name('delete');
+        });
 
         Route::group(['prefix' => 'coupon', 'as' => 'coupon.', 'middleware' => ['module:coupon']], function () {
             Route::get('add-new', 'CouponController@add_new')->name('add-new');
@@ -238,7 +252,8 @@ Route::group(['namespace' => 'Vendor', 'as' => 'vendor.'], function () {
             Route::get('expense-report', 'ReportController@expense_report')->name('expense-report');
             Route::get('expense-export', 'ReportController@expense_export')->name('expense-export');
             Route::post('expense-report-search', 'ReportController@expense_search')->name('expense-report-search');
+        Route::get('disbursement-report', 'ReportController@disbursement_report')->name('disbursement-report');
+        Route::get('disbursement-report-export/{type}', 'ReportController@disbursement_report_export')->name('disbursement-report-export');
         });
-
     });
 });

@@ -160,7 +160,13 @@
                                     <td>{{$at->created_at->format('Y-m-d '.config('timeformat'))}}</td>
                                     <td>{{$at['amount']}}</td>
                                     <td>{{$at['method']}}</td>
-                                    <td>{{$at['ref']}}</td>
+                                    @if(  $at['ref'] == ['delivery_man_wallet_adjustment_full'])
+                                        <td>{{ translate('wallet_adjusted') }}</td>
+                                    @elseif( $at['ref'] == [ 'delivery_man_wallet_adjustment_partial'])
+                                        <td>{{ translate('wallet_adjusted_partially') }}</td>
+                                    @else
+                                        <td>{{$at['ref']}}</td>
+                                    @endif
                                 </tr>
                             @endforeach
                             </tbody>

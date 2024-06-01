@@ -47,6 +47,10 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::get('settings', 'ParcelController@settings')->name('settings');
             Route::post('settings', 'ParcelController@update_settings')->name('update.settings');
             Route::get('dispatch/{status}', 'ParcelController@dispatch_list')->name('list');
+            Route::post('instruction', 'ParcelController@instruction')->name('instruction');
+            Route::get('/instruction/{id}/{status}', 'ParcelController@instruction_status')->name('instruction_status');
+            Route::put('instruction_edit/', 'ParcelController@instruction_edit')->name('instruction_edit');
+            Route::delete('instruction_delete/{id}', 'ParcelController@instruction_delete')->name('instruction_delete');
         });
 
         Route::group(['prefix' => 'dashboard-stats', 'as' => 'dashboard-stats.'], function () {
@@ -249,6 +253,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::delete('delete/{store}', 'VendorController@destroy')->name('delete');
                 Route::delete('clear-discount/{store}', 'VendorController@cleardiscount')->name('clear-discount');
                 // Route::get('view/{store}', 'VendorController@view')->name('view_tab');
+                Route::get('disbursement-export/{id}/{type}', 'VendorController@disbursement_export')->name('disbursement-export');
                 Route::get('view/{store}/{tab?}/{sub_tab?}', 'VendorController@view')->name('view');
                 Route::get('list', 'VendorController@list')->name('list');
                 Route::get('pending-requests', 'VendorController@pending_requests')->name('pending-requests');
@@ -440,6 +445,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
             Route::post('update-landing-setup', 'BusinessSettingsController@landing_page_settings_update')->name('update-landing-setup');
             Route::delete('delete-custom-landing-page', 'BusinessSettingsController@delete_custom_landing_page')->name('delete-custom-landing-page');
             Route::post('update-dm', 'BusinessSettingsController@update_dm')->name('update-dm');
+            Route::post('update-disbursement', 'BusinessSettingsController@update_disbursement')->name('update-disbursement');
             Route::post('update-websocket', 'BusinessSettingsController@update_websocket')->name('update-websocket');
             Route::post('update-store', 'BusinessSettingsController@update_store')->name('update-store');
             Route::post('update-order', 'BusinessSettingsController@update_order')->name('update-order');
@@ -808,7 +814,7 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                     Route::delete('delete/{id}', 'DeliveryManController@delete')->name('delete');
                     Route::post('search', 'DeliveryManController@search')->name('search');
                     Route::post('active-search', 'DeliveryManController@active_search')->name('active-search');
-
+                    Route::get('disbursement-export/{id}/{type}', 'DeliveryManController@disbursement_export')->name('disbursement-export');
                     Route::get('export', 'DeliveryManController@export')->name('export');
 
                     Route::group(['prefix' => 'reviews', 'as' => 'reviews.'], function () {
@@ -946,6 +952,8 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::get('low-stock-report', 'ReportController@low_stock_report')->name('low-stock-report');
                 Route::post('low-stock-report', 'ReportController@low_stock_search')->name('low-stock-search');
                 Route::get('low-stock-wise-report-search', 'ReportController@low_stock_wise_export')->name('low-stock-wise-report-export');
+                Route::get('disbursement-report/{tab?}', 'ReportController@disbursement_report')->name('disbursement_report');
+                Route::get('disbursement-report-export/{type}/{tab?}', 'ReportController@disbursement_report_export')->name('disbursement_report_export');
             });
 
             // Route::resource('account-transaction', 'AccountTransactionController')->middleware('module:collect_cash');
@@ -975,6 +983,33 @@ Route::group(['namespace' => 'Admin', 'as' => 'admin.'], function () {
                 Route::get('withdraw-view/{withdraw_id}/{seller_id}', 'VendorController@withdraw_view')->name('withdraw_view');
                 // });
 
+            });
+
+            Route::group(['prefix' => 'withdraw-method', 'as' => 'withdraw-method.'], function () {
+                Route::get('list', 'WithdrawalMethodController@list')->name('list');
+                Route::get('create', 'WithdrawalMethodController@create')->name('create');
+                Route::post('store', 'WithdrawalMethodController@store')->name('store');
+                Route::get('edit/{id}', 'WithdrawalMethodController@edit')->name('edit');
+                Route::put('update', 'WithdrawalMethodController@update')->name('update');
+                Route::delete('delete/{id}', 'WithdrawalMethodController@delete')->name('delete');
+                Route::post('status-update', 'WithdrawalMethodController@status_update')->name('status-update');
+                Route::post('default-status-update', 'WithdrawalMethodController@default_status_update')->name('default-status-update');
+            });
+
+            Route::group(['prefix' => 'store-disbursement', 'as' => 'store-disbursement.', 'middleware' => ['module:account']], function () {
+                Route::get('list', 'StoreDisbursementController@list')->name('list');
+                Route::get('details/{id}', 'StoreDisbursementController@view')->name('view');
+                Route::get('status', 'StoreDisbursementController@status')->name('status');
+                Route::get('change-status/{id}/{status}', 'StoreDisbursementController@statusById')->name('change-status');
+                Route::get('export/{id}/{type?}', 'StoreDisbursementController@export')->name('export');
+            });
+            Route::group(['prefix' => 'dm-disbursement', 'as' => 'dm-disbursement.', 'middleware' => ['module:account']], function () {
+                Route::get('list', 'DeliveryManDisbursementController@list')->name('list');
+                Route::get('details/{id}', 'DeliveryManDisbursementController@view')->name('view');
+                Route::get('export/{id}/{type?}', 'DeliveryManDisbursementController@export')->name('export');
+                Route::get('status', 'DeliveryManDisbursementController@status')->name('status');
+                Route::get('change-status/{id}/{status}', 'DeliveryManDisbursementController@statusById')->name('change-status');
+                Route::get('export/{id}/{type?}', 'DeliveryManDisbursementController@export')->name('export');
             });
         });
     });

@@ -23,7 +23,7 @@
                             <div>
                                 @php($local = session()->has('vendor_local')?session('vendor_local'):'en')
                                 @php($lang = \App\Models\BusinessSetting::where('key', 'system_language')->first())
-                                @if ($lang)                                   
+                                @if ($lang)
                                 <div
                                     class="topbar-text dropdown disable-autohide text-capitalize d-flex">
                                     <a class="topbar-link dropdown-toggle d-flex align-items-center title-color"
@@ -31,7 +31,7 @@
                                     @foreach(json_decode($lang['value'],true) as $data)
                                     @if($data['code']==$local)
                                     <i class="tio-globe"></i>
-                                                {{-- <img 
+                                                {{-- <img
                                                      width="20"
                                                      src="{{asset('public/assets/admin')}}/img/flags/{{$data['code']}}.png"
                                                      alt="Eng"> --}}
@@ -46,7 +46,7 @@
                                                     <a class="dropdown-item py-1"
                                                        href="{{route('vendor.lang',[$data['code']])}}">
                                                         {{-- <img
-                                                            
+
                                                             width="20"
                                                             src="{{asset('public/assets/admin')}}/img/flags/{{$data['code']}}.png"
                                                             alt="{{$data['code']}}"/> --}}
@@ -76,7 +76,7 @@
                         <!-- End Notification -->
                     </li>
 
-                    
+
 
                     <li class="nav-item">
                         <!-- Account -->
@@ -159,3 +159,31 @@
 </div>
 <div id="headerFluid" class="d-none"></div>
 <div id="headerDouble" class="d-none"></div>
+<?php
+$wallet = \App\Models\StoreWallet::where('vendor_id',\App\CentralLogics\Helpers::get_vendor_id())->first();
+$Payable_Balance = $wallet?->balance  < 0 ? 1: 0;
+
+$cash_in_hand_overflow=  \App\Models\BusinessSetting::where('key' ,'cash_in_hand_overflow_store')->first()?->value;
+$cash_in_hand_overflow_store_amount =  \App\Models\BusinessSetting::where('key' ,'cash_in_hand_overflow_store_amount')->first()?->value;
+$val=  $cash_in_hand_overflow_store_amount - (($cash_in_hand_overflow_store_amount * 10)/100);
+?>
+
+@if ($Payable_Balance == 1 &&  $cash_in_hand_overflow &&  $wallet?->balance < 0 &&  $val <=  abs($wallet?->balance)  &&  $cash_in_hand_overflow_store_amount >= abs($wallet?->balance))
+    <div class="alert __alert-2 alert-warning m-0 py-1 px-2" role="alert">
+        <img class="rounded mr-1"  width="25" src="{{ asset('/public/assets/admin/img/header_warning.png') }}" alt="">
+        <div class="cont">
+            <h4 class="m-0">{{ translate('Attention_Please') }} </h4>
+            {{ translate('The_Cash_in_Hand_amount_is_about_to_exceed_the_limit._Please_pay_the_due_amount._If_the_limit_exceeds,_your_account_will_be_suspended.') }}
+        </div>
+    </div>
+@endif
+
+@if ($Payable_Balance == 1 &&  $cash_in_hand_overflow &&  $wallet?->balance < 0 &&  $cash_in_hand_overflow_store_amount < abs($wallet?->balance))
+    <div class="alert __alert-2 alert-warning m-0 py-1 px-2" role="alert">
+        <img class="mr-1"  width="25" src="{{ asset('/public/assets/admin/img/header_warning.png') }}" alt="">
+        <div class="cont">
+            <h4 class="m-0">{{ translate('Attention_Please') }} </h4>{{ translate('The_Cash_in_Hand_amount_limit_is_exceeded._Your_account_is_now_suspended._Please_pay_the_due_amount_to_receive_new_order_requests_again.') }}<a href="{{ route('vendor.wallet.index') }}" class="alert-link"> &nbsp; {{ translate('Pay_the_due') }}</a>
+        </div>
+    </div>
+@endif
+

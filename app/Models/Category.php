@@ -17,6 +17,9 @@ class Category extends Model
         'priority' => 'integer',
         'status' => 'integer',
         'featured' => 'integer',
+        'module_id' => 'integer',
+        'products_count' => 'integer',
+        'childes_count' => 'integer',
     ];
 
     public function translations()
@@ -34,7 +37,7 @@ class Category extends Model
         return $this->hasMany(Item::class);
     }
 
-    
+
     public function scopeModule($query, $module_id)
     {
         return $query->where('module_id', $module_id);
@@ -72,7 +75,7 @@ class Category extends Model
     {
         $slug = Str::slug($name);
         if ($max_slug = static::where('slug', 'like',"{$slug}%")->latest('id')->value('slug')) {
-            
+
             if($max_slug == $slug) return "{$slug}-2";
 
             $max_slug = explode('-',$max_slug);
@@ -83,7 +86,7 @@ class Category extends Model
             }
         }
         return $slug;
-    } 
+    }
 
     public function getNameAttribute($value){
         if (count($this->translations) > 0) {

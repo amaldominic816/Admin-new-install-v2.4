@@ -18,6 +18,9 @@ class StoreWallet extends Model
 
     public function getBalanceAttribute()
     {
-        return $this->total_earning - ($this->total_withdrawn + $this->pending_withdraw + $this->collected_cash);
+        if ($this->total_earning <= 0){
+            return (float)0;
+        }
+        return (float) ($this->total_earning - ($this->total_withdrawn + $this->pending_withdraw + $this->collected_cash));
     }
 }

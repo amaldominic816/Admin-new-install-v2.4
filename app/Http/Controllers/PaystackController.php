@@ -74,19 +74,19 @@ class PaystackController extends Controller
     {
         $paymentDetails = Paystack::getPaymentData();
         if ($paymentDetails['status'] == true) {
-            $this->payment::where(['attribute_id' => $paymentDetails['data']['orderID']])->update([
+            $this->payment::where(['attribute_id' => $paymentDetails['metadata']['orderID']])->update([
                 'payment_method' => 'paystack',
                 'is_paid' => 1,
                 'transaction_id' => $request['trxref'],
             ]);
-            $data = $this->payment::where(['attribute_id' => $paymentDetails['data']['orderID']])->first();
+            $data = $this->payment::where(['attribute_id' => $paymentDetails['metadata']['orderID']])->first();
             if (isset($data) && function_exists($data->success_hook)) {
                 call_user_func($data->success_hook, $data);
             }
             return $this->payment_response($data, 'success');
         }
 
-        $payment_data = $this->payment::where(['attribute_id' => $paymentDetails['data']['orderID']])->first();
+        $payment_data = $this->payment::where(['attribute_id' => $paymentDetails['metadata']['orderID']])->first();
         if (isset($payment_data) && function_exists($payment_data->failure_hook)) {
             call_user_func($payment_data->failure_hook, $payment_data);
         }

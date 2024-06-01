@@ -103,6 +103,11 @@ class DeliveryMan extends Authenticatable
         return $this->hasMany(DMReview::class);
     }
 
+    public function disbursement_method()
+    {
+        return $this->hasOne(DisbursementWithdrawalMethod::class)->where('is_default',1);
+    }
+
     public function rating()
     {
         return $this->hasMany(DMReview::class)

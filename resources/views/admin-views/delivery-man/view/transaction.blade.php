@@ -29,6 +29,9 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{{route('admin.users.delivery-man.preview', ['id'=>$dm->id, 'tab'=> 'conversation'])}}"  aria-disabled="true">{{translate('messages.conversations')}}</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{route('admin.users.delivery-man.preview', ['id'=>$dm->id, 'tab'=> 'disbursement'])}}"  aria-disabled="true">{{translate('messages.disbursements')}}</a>
+                        </li>
                     </ul>
                     <!-- End Nav -->
                 </div>

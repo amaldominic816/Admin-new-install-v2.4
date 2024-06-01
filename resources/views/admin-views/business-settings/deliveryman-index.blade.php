@@ -132,7 +132,7 @@
                                 <div class="col-sm-6 col-lg-4">
                                     @php($canceled_by_deliveryman = \App\Models\BusinessSetting::where('key', 'canceled_by_deliveryman')->first())
                                     @php($canceled_by_deliveryman = $canceled_by_deliveryman ? $canceled_by_deliveryman->value : 0)
-                                    <div class="form-group">
+                                    <div class="form-group mb-0">
                                         <label class="input-label text-capitalize d-flex alig-items-center"><span
                                                 class="line--limit-1">{{ translate('messages.Can_A_Deliveryman_Cancel_Order?') }}</span>
                                             <span class="form-label-secondary"
@@ -186,6 +186,81 @@
                                         </label>
                                     </div>
                                 </div>
+
+
+
+
+                                <div class="col-sm-6 col-lg-4">
+                                    @php($cash_in_hand_overflow = \App\Models\BusinessSetting::where('key', 'cash_in_hand_overflow_delivery_man')->first())
+                                    @php($cash_in_hand_overflow = $cash_in_hand_overflow ? $cash_in_hand_overflow->value : 0)
+                                    <div class="form-label  mb-0 ">
+                                        <label>&nbsp;</label>
+                                        <label
+                                            class="toggle-switch h--45px toggle-switch-sm d-flex justify-content-between border rounded px-3 py-0 form-control">
+                                            <span class="pr-1 d-flex align-items-center switch--label">
+                                                <span class="line--limit-1">
+                                                    {{ translate('messages.Cash_In_Hand_Overflow') }}
+                                                </span>
+                                                <span class="form-label-secondary text-danger d-flex"
+                                                      data-toggle="tooltip" data-placement="right"
+                                                      data-original-title="{{ translate('If_enabled,_delivery_men_will_be_automatically_suspended_by_the_system_when_their_‘Cash_in_Hand’_limit_is_exceeded.') }}"><img
+                                                        src="{{ asset('/public/assets/admin/img/info-circle.svg') }}"
+                                                        alt="{{ translate('messages.cash_in_hand_overflow') }}"> *
+                                                </span>
+                                            </span>
+                                            <input type="checkbox" onclick="toogleModal(event,'cash_in_hand_overflow','show-earning-in-apps-on.png','show-earning-in-apps-off.png','{{translate('Want_to_enable')}} <strong>{{translate('Cash_In_Hand_Overflow')}}</strong> ?','{{translate('Want_to_disable')}} <strong>{{translate('Cash_In_Hand_Overflow')}}</strong>  ?',`<p>{{translate('If_enabled,_delivery_men_have_to_provide_collected_cash_by_them_self')}}</p>`,`<p>{{translate('If_disabled,_delivery_men_do_not_have_to_provide_collected_cash_by_them_self')}}</p>`)" class="toggle-switch-input" value="1"
+                                                   name="cash_in_hand_overflow_delivery_man" id="cash_in_hand_overflow"
+                                                {{ $cash_in_hand_overflow == 1 ? 'checked' : '' }}>
+                                            <span class="toggle-switch-label text">
+                                                <span class="toggle-switch-indicator"></span>
+                                            </span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6 col-lg-4">
+                                    @php($dm_max_cash_in_hand = \App\Models\BusinessSetting::where('key', 'dm_max_cash_in_hand')->first())
+                                    <div class="form-label mb-0">
+                                        <label class="d-flex text-capitalize"
+                                               for="dm_max_cash_in_hand">
+                                            <span class="line--limit-1">
+                                                {{translate('Delivery_Man_Maximum_Cash_in_Hand')}} ({{ \App\CentralLogics\Helpers::currency_symbol() }})
+                                            </span>
+                                            <span data-toggle="tooltip" data-placement="right" data-original-title="{{translate('Deliveryman_can_not_accept_any_orders_when_the_Cash_In_Hand_limit_exceeds_and_must_deposit_the_amount_to_the_admin_before_accepting_new_orders')}}" class="input-label-secondary"><img src="{{ asset('/public/assets/admin/img/info-circle.svg') }}" alt="{{ translate('messages.dm_maximum_order_hint') }}"></span>
+                                        </label>
+                                        <input type="number" name="dm_max_cash_in_hand" class="form-control"
+                                               id="dm_max_cash_in_hand" min="0" step=".001"
+                                               value="{{ $dm_max_cash_in_hand ? $dm_max_cash_in_hand->value : '' }}" {{ $cash_in_hand_overflow  == 1 ? 'required' : 'readonly' }} >
+                                    </div>
+                                </div>
+
+
+
+                                <div class="col-sm-6 col-lg-4">
+                                    @php($min_amount_to_pay_dm = \App\Models\BusinessSetting::where('key', 'min_amount_to_pay_dm')->first())
+                                    <div class="form-label mb-0">
+                                        <label class="text-capitalize"
+                                               for="min_amount_to_pay_dm">
+                                            <span>
+                                                {{ translate('Minimum_Amount_To_Pay') }} ({{ \App\CentralLogics\Helpers::currency_symbol() }})
+
+                                            </span>
+
+                                            <span class="form-label-secondary"
+                                                  data-toggle="tooltip" data-placement="right"
+                                                  data-original-title="{{ translate('Enter_the_minimum_cash_amount_delivery_men_can_pay') }}"><img
+                                                    src="{{ asset('/public/assets/admin/img/info-circle.svg') }}"
+                                                    alt="{{ translate('messages.dm_cancel_order_hint') }}"></span>
+                                        </label>
+                                        <input type="number" name="min_amount_to_pay_dm" class="form-control"
+                                               id="min_amount_to_pay_dm" min="0" step=".001"
+                                               value="{{ $min_amount_to_pay_dm ? $min_amount_to_pay_dm->value : '' }}"  {{ $cash_in_hand_overflow  == 1 ? 'required' : 'readonly' }} >
+                                    </div>
+                                </div>
+
+
+
+
+
                             </div>
                             <div class="btn--container justify-content-end">
                                 <button type="reset" id="reset_btn" class="btn btn--reset">{{ translate('messages.reset') }}</button>

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exports\DisbursementHistoryExport;
+use App\Models\DisbursementDetails;
 use App\Models\Zone;
 use App\Models\Message;
 use App\Models\DMReview;
@@ -166,7 +168,7 @@ class DeliveryManController extends Controller
             'reviews'=>$reviews,
             'search'=>$request->search??null,
         ];
-        
+
         if ($request->type == 'excel') {
             return Excel::download(new DeliveryManReviewExport($data), 'DeliveryManReviews.xlsx');
         } else if ($request->type == 'csv') {
@@ -176,6 +178,7 @@ class DeliveryManController extends Controller
 
     public function preview(Request $request, $id, $tab='info')
     {
+        $key = explode(' ', $request['search']);
         $dm = DeliveryMan::with(['reviews'])->where('type','zone_wise')->where(['id' => $id])->first();
         if($tab == 'info')
         {
@@ -197,6 +200,19 @@ class DeliveryManController extends Controller
             }
 
             return view('admin-views.delivery-man.view.conversations', compact('conversations','dm'));
+        } else if ($tab == 'disbursement') {
+            $disbursements=DisbursementDetails::where('delivery_man_id', $dm->id)
+                ->when(isset($key), function ($q) use ($key){
+                    $q->where(function ($q) use ($key) {
+                        foreach ($key as $value) {
+                            $q->orWhere('disbursement_id', 'like', "%{$value}%")
+                                ->orWhere('status', 'like', "%{$value}%");
+                        }
+                    });
+                })
+                ->latest()->paginate(config('default_pagination'));
+            return view('admin-views.delivery-man.view.disbursement', compact('dm','disbursements'));
+
         }
     }
 
@@ -209,11 +225,40 @@ class DeliveryManController extends Controller
             'reviews'=>$reviews,
             'search'=>$request->search??null,
         ];
-        
+
         if ($request->type == 'excel') {
             return Excel::download(new SingleDeliveryManReviewExport($data), 'DeliveryManReviews.xlsx');
         } else if ($request->type == 'csv') {
             return Excel::download(new SingleDeliveryManReviewExport($data), 'DeliveryManReviews.csv');
+        }
+    }
+
+    public function disbursement_export(Request $request,$id,$type)
+    {
+        $key = explode(' ', $request['search']);
+
+        $dm= DeliveryMan::find($id);
+        $disbursements=DisbursementDetails::where('delivery_man_id', $dm->id)
+            ->when(isset($key), function ($q) use ($key){
+                $q->where(function ($q) use ($key) {
+                    foreach ($key as $value) {
+                        $q->orWhere('disbursement_id', 'like', "%{$value}%")
+                            ->orWhere('status', 'like', "%{$value}%");
+                    }
+                });
+            })
+            ->latest()->get();
+        $data = [
+            'disbursements'=>$disbursements,
+            'search'=>$request->search??null,
+            'delivery_man'=>$dm->f_name.' '.$dm->l_name,
+            'type'=>'dm',
+        ];
+
+        if ($request->type == 'excel') {
+            return Excel::download(new DisbursementHistoryExport($data), 'Disbursementlist.xlsx');
+        } else if ($request->type == 'csv') {
+            return Excel::download(new DisbursementHistoryExport($data), 'Disbursementlist.csv');
         }
     }
 
@@ -230,7 +275,7 @@ class DeliveryManController extends Controller
             'earnings'=>$earnings,
             'date'=>$request->date??null,
         ];
-        
+
         if ($request->type == 'excel') {
             return Excel::download(new DeliveryManEarningExport($data), 'DeliveryManEarnings.xlsx');
         } else if ($request->type == 'csv') {
@@ -603,7 +648,7 @@ class DeliveryManController extends Controller
             'search'=>$request->search??null,
             'zone'=>is_numeric($zone_id)?Helpers::get_zones_name($zone_id):null,
         ];
-        
+
         if ($request->type == 'excel') {
             return Excel::download(new DeliveryManListExport($data), 'DeliveryMans.xlsx');
         } else if ($request->type == 'csv') {

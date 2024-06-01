@@ -63,7 +63,7 @@ class StripePaymentController extends Controller
         header('Content-Type: application/json');
         $currency_code = $data->currency_code;
 
-        if (count(json_decode($data['additional_data']))>0) {
+        if (count(json_decode($data['additional_data'],true))>0) {
             $business = json_decode($data['additional_data']);
             $business_name = $business->business_name ?? "my_business";
             $business_logo = $business->business_logo ??  url('/');

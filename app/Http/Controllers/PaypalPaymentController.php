@@ -93,14 +93,14 @@ class PaypalPaymentController extends Controller
                     'desc'  => 'payment ID :' . $data->id,
                     'amount' => [
                         'currency_code' => 'USD',
-                        'value' => round($data->payment_amount, 2)
+                        'value' => $data->payment_amount*100
                     ]
                 ]
             ];
 
             $payment_data['invoice_id'] = $data->id;
             $payment_data['invoice_description'] = "Order #{$payment_data['invoice_id']} Invoice";
-            $payment_data['total'] = round($data->payment_amount, 2);
+            $payment_data['total'] = $data->payment_amount*100;
             $payment_data['intent'] = 'CAPTURE';
             $payment_data['application_context'] = [
                 'return_url' => route('paypal.success',['payment_id' => $data->id]),

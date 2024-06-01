@@ -81,6 +81,7 @@ class CategoryLogic
     {
         $paginator = Store::
         withOpen($longitude??0,$latitude??0)
+            ->withCount(['items','campaigns'])
         ->whereHas('items.category',function($q)use($category_ids){
             return $q->whereIn('id',$category_ids)->orWhereIn('parent_id', $category_ids);
         })
@@ -124,6 +125,7 @@ class CategoryLogic
 
             $store->category_ids = $category_ids;
             $store->discount_status = !empty($store->items->where('discount', '>', 0));
+            unset($store['items']);
         });
 
         return [
@@ -142,6 +144,7 @@ class CategoryLogic
         // ->whereHas('items.category', function($query)use($category_id){
         //     return $query->whereId($category_id)->orWhere('parent_id', $category_id);
         // })
+        ->withCount(['items','campaigns'])
         ->whereHas('items.category',function($q)use($category_id){
             return $q->when(is_numeric($category_id),function ($qurey) use($category_id){
                 return $qurey->whereId($category_id)->orWhere('parent_id', $category_id);
@@ -190,6 +193,7 @@ class CategoryLogic
 
             $store->category_ids = $category_ids;
             $store->discount_status = !empty($store->items->where('discount', '>', 0));
+            unset($store['items']);
         });
 
         return [

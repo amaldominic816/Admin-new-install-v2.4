@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Models\OrderPayment;
+use App\Models\ParcelDeliveryInstruction;
 use Stripe\Product;
 use App\Models\Cart;
 use App\Models\Item;
@@ -822,25 +823,26 @@ class OrderController extends Controller
 
 
             $payments = $order->payments()->where('payment_method','cash_on_delivery')->exists();
-                if(!in_array($order->payment_method, ['digital_payment', 'partial_payment', 'offline_payment'])  || $payments){
-                    Helpers::send_order_notification($order);
-                }
-
             $order_mail_status = Helpers::get_mail_status('place_order_mail_status_user');
             $order_verification_mail_status = Helpers::get_mail_status('order_verification_mail_status_user');
             //PlaceOrderMail
             try {
-                if ($order->order_status == 'pending' && config('mail.status') && $order_mail_status == '1' && $request->user) {
-                    Mail::to($request->user->email)->send(new PlaceOrder($order->id));
-                }
-                if ($order->order_status == 'pending' && config('order_delivery_verification') == 1 && $order_verification_mail_status == '1' && $request->user) {
-                    Mail::to($request->user->email)->send(new OrderVerificationMail($order->otp,$request->user->f_name));
-                }
-                if ($order->is_guest == 1 && $order->order_status == 'pending' && config('mail.status') && $order_mail_status == '1' && isset($request->contact_person_email)) {
-                    Mail::to($request->contact_person_email)->send(new PlaceOrder($order->id));
-                }
-                if ($order->is_guest == 1 && $order->order_status == 'pending' && config('order_delivery_verification') == 1 && $order_verification_mail_status == '1' && isset($request->contact_person_email)) {
-                    Mail::to($request->contact_person_email)->send(new OrderVerificationMail($order->otp,$request->contact_person_name));
+
+                if(!in_array($order->payment_method, ['digital_payment', 'partial_payment', 'offline_payment'])  || $payments){
+                        Helpers::send_order_notification($order);
+
+                    if ($order->order_status == 'pending' && config('mail.status') && $order_mail_status == '1' && $request->user) {
+                        Mail::to($request->user->email)->send(new PlaceOrder($order->id));
+                    }
+                    if ($order->order_status == 'pending' && config('order_delivery_verification') == 1 && $order_verification_mail_status == '1' && $request->user) {
+                        Mail::to($request->user->email)->send(new OrderVerificationMail($order->otp,$request->user->f_name));
+                    }
+                    if ($order->is_guest == 1 && $order->order_status == 'pending' && config('mail.status') && $order_mail_status == '1' && isset($request->contact_person_email)) {
+                        Mail::to($request->contact_person_email)->send(new PlaceOrder($order->id));
+                    }
+                    if ($order->is_guest == 1 && $order->order_status == 'pending' && config('order_delivery_verification') == 1 && $order_verification_mail_status == '1' && isset($request->contact_person_email)) {
+                        Mail::to($request->contact_person_email)->send(new OrderVerificationMail($order->otp,$request->contact_person_name));
+                    }
                 }
             } catch (\Exception $ex) {
                 info($ex->getMessage());
@@ -1490,6 +1492,8 @@ class OrderController extends Controller
                 ]
             ], 403);
         }
+
+
         $user_id = $request->user ? $request->user->id : $request['guest_id'];
         $order = Order::where(['user_id' => $user_id, 'id' => $request['order_id']])->Notpos()->first();
         if ($order) {
@@ -1510,8 +1514,21 @@ class OrderController extends Controller
 
             $order = Order::where(['user_id' => $user_id, 'id' => $request['order_id']])->Notpos()->first();
 
+            $order_mail_status = Helpers::get_mail_status('place_order_mail_status_user');
+            $order_verification_mail_status = Helpers::get_mail_status('order_verification_mail_status_user');
+            $address = json_decode($order->delivery_address, true);
+
             try {
                 Helpers::send_order_notification($order);
+
+                if ($order->is_guest == 0 && config('mail.status') && $order_mail_status == '1'&& $order->customer) {
+                    Mail::to($order->customer->email)->send(new PlaceOrder($order->id));
+                }
+                if ($order->is_guest == 1 && config('mail.status') && $order_mail_status == '1' && isset($address['contact_person_email'])) {
+                    Mail::to($address['contact_person_email'])->send(new PlaceOrder($order->id));
+                }
+
+
             } catch (\Exception $e) {
                 info($e->getMessage());
             }
@@ -1535,7 +1552,7 @@ class OrderController extends Controller
     public function cancellation_reason(Request $request)
     {
         $limit = $request->query('limit', 25);
-        $offset = $request->query('offset', 25);
+        $offset = $request->query('offset', 1);
 
         $reasons = OrderCancelReason::where('status', 1)->when($request->type, function ($query) use ($request) {
             $query->where('user_type', $request->type);
@@ -1546,6 +1563,22 @@ class OrderController extends Controller
             'limit' => $limit,
             'offset' => $offset,
             'data' => $reasons->items()
+        ];
+        return response()->json($data, 200);
+    }
+
+    public function parcel_instructions(Request $request)
+    {
+        $limit = $request->query('limit', 25);
+        $offset = $request->query('offset', 1);
+
+        $instructions = ParcelDeliveryInstruction::where('status', 1)->paginate($limit, ['*'], 'page', $offset);
+
+        $data = [
+            'total_size' => $instructions->total(),
+            'limit' => $limit,
+            'offset' => $offset,
+            'data' => $instructions->items()
         ];
         return response()->json($data, 200);
     }
@@ -1601,6 +1634,8 @@ class OrderController extends Controller
             // $order->payment_status= 'paid';
 
             $OfflinePayments= OfflinePayments::firstOrNew(['order_id' => $order->id]);
+            info('info($OfflinePayments');
+            info($OfflinePayments);
             $OfflinePayments->payment_info =json_encode($offline_payment_info);
             $OfflinePayments->customer_note = $request->customer_note;
             $OfflinePayments->method_fields = json_encode($method?->method_fields);
@@ -1629,6 +1664,7 @@ class OrderController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
+            info($e->getMessage());
             DB::rollBack();
             return response()->json([ 'payment' => $e->getMessage()], 403);
         }
